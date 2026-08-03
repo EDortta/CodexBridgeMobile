@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'core/design/app_theme.dart';
 import 'features/app_bootstrap/app_bootstrap_screen.dart';
 
-void main() => runApp(const CodexBridgeMobileApp());
+void main() => runApp(const ProviderScope(child: CodexBridgeMobileApp()));
 
 class CodexBridgeMobileApp extends StatelessWidget {
   const CodexBridgeMobileApp({super.key});
