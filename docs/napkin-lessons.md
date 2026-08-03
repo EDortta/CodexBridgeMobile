@@ -1,5 +1,10 @@
 # Napkin Lessons Learned
 
+- [2026-08-03] WK-20260803-gh-20-configure-quality-ci - A workflow that exists
+  locally is not proof that GitHub ran it or that a branch is protected.
+- Action next time: Validate syntax and equivalent local commands now; report
+  remote execution and branch-protection state separately until a push occurs.
+
 - [2026-08-03] WK-20260803-gh-16-initialize-flutter-project - A generated
   Flutter Android build can inherit a broken host NDK even with no native
   project code.

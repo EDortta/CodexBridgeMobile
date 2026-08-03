@@ -299,3 +299,6 @@ flutter analyze
 flutter test
 flutter build apk --debug
 ```
+
+GitHub Actions executes the same dependency resolution, analysis, test, and
+debug APK build checks for every pull request.
