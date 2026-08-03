@@ -9,4 +9,4 @@ issue order, one feature branch and one validated commit at a time.
 
 ## Active issue
 
-- [#16 — Initialize Flutter project and Android targets](issues/016-initialize-flutter-project-[ready].md)
+- [#16 — Initialize Flutter project and Android targets](issues/016-initialize-flutter-project-[finished].md)

@@ -1,17 +1,17 @@
 # Phase 0 Resume
 
-- work_id: WK-20260803-gh-16-initialize-flutter-project
+- work_id: WK-20260803-gh-20-configure-quality-ci
 - date: 2026-08-03
-- status: ready
+- status: planned
 
 ## Current state
 
 - Public Epic #1 and issue #16 are mirrored locally.
-- `development` is the integration branch; #16 will start from it.
-- Flutter will be installed at `/opt/flutter`; a local AVD will prove the debug
+- #16 is implemented, validated, and merged locally into `development`.
+- Flutter is available at `/opt/flutter`; the `jkx_dev` AVD validated the debug
   application launch.
 
 ## Next Step (DO THIS FIRST)
 
-Create `feature/gh-16/initialize-flutter-project` from `development` and
-implement the #16 acceptance criteria.
+Mirror public issue #20, then create
+`feature/gh-20/configure-lint-tests-android-ci` from `development`.

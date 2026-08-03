@@ -1,5 +1,11 @@
 # Napkin Lessons Learned
 
+- [2026-08-03] WK-20260803-gh-16-initialize-flutter-project - A generated
+  Flutter Android build can inherit a broken host NDK even with no native
+  project code.
+- Action next time: Pin a verified side-by-side NDK in the Android module and
+  prove the APK build before treating the SDK setup as ready.
+
 - 2026-07-27: A declared reserve must reduce usable budget; a zero-use category does
   not reserve anything. Name task and risk contract costs independently so telemetry
   explains where policy tokens are spent.

@@ -281,4 +281,21 @@ Um MVP coerente com essa visao deve priorizar:
 7. modulo Android para recebimento e instalacao de APK
 
 Tudo que parecer IDE movel deve ficar fora do primeiro ciclo.
-# CodexBridgeMobile
+
+## Desenvolvimento
+
+Toolchain validado para este projeto:
+
+- Flutter 3.44.8
+- Dart 3.12.2
+- Android application ID: `com.edortta.codexbridge.mobile`
+
+Com o SDK instalado em `/opt/flutter`, execute:
+
+```bash
+export PATH=/opt/flutter/bin:$PATH
+flutter doctor -v
+flutter analyze
+flutter test
+flutter build apk --debug
+```
