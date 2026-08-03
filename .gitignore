@@ -14,6 +14,13 @@ GEMINI.md
 .env
 .env.*
 handoff.md
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.idea/
+*.iml
+build/
+android/.gradle/
 new-tag.sh
 scripts/install-agents-kit.sh
 scripts/agent-worktree.sh
