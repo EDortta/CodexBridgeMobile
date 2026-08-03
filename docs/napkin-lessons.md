@@ -1,5 +1,9 @@
 # Napkin Lessons Learned
 
+- [2026-08-03] WK-20260803-gh-19-riverpod-feature-boundaries - Repository
+  replacement stays local to tests when widgets depend on feature state, not data adapters.
+- Action next time: Override the feature repository provider in a `ProviderScope`.
+
 - [2026-08-03] WK-20260803-gh-17-material-3-design-system - Typography that
   represents distinct operational meanings needs a ThemeExtension; the Material
   text scale alone cannot identify code or log content.

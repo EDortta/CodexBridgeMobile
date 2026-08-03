@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/presentation/async_state_view.dart';
 import '../../core/design/app_tokens.dart';
 import '../../core/design/operational_text_theme.dart';
+import '../missions/domain/mission.dart';
+import '../missions/presentation/mission_providers.dart';
 
-class AppBootstrapScreen extends StatelessWidget {
+class AppBootstrapScreen extends ConsumerWidget {
   const AppBootstrapScreen({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AsyncStateView<List<Mission>>(
+      value: ref.watch(missionsProvider),
+      data: (BuildContext context, List<Mission> missions) {
+        return _MissionBootstrapCard(mission: missions.first);
+      },
+    );
+  }
+}
+
+class _MissionBootstrapCard extends StatelessWidget {
+  const _MissionBootstrapCard({required this.mission});
+
+  final Mission mission;
 
   @override
   Widget build(BuildContext context) {
@@ -28,14 +48,11 @@ class AppBootstrapScreen extends StatelessWidget {
                   children: <Widget>[
                     Icon(AppIcons.terminal, color: theme.colorScheme.primary),
                     const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Codex Bridge Mobile',
-                      style: theme.textTheme.titleLarge,
-                    ),
+                    Text(mission.title, style: theme.textTheme.titleLarge),
                     const SizedBox(height: AppSpacing.xs),
                     Text('Terminal móvel', style: operationalText.metadata),
                     const SizedBox(height: AppSpacing.lg),
-                    Text('codex bridge mobile', style: operationalText.code),
+                    Text(mission.id, style: operationalText.code),
                     const SizedBox(height: AppSpacing.sm),
                     Row(
                       children: <Widget>[
@@ -46,7 +63,7 @@ class AppBootstrapScreen extends StatelessWidget {
                         ),
                         const SizedBox(width: AppSpacing.xs),
                         Text(
-                          '[ready] Local foundation active',
+                          '[ready] ${mission.status}',
                           style: operationalText.log,
                         ),
                       ],
