@@ -1,5 +1,11 @@
 # Napkin Lessons Learned
 
+- [2026-08-03] WK-20260803-gh-17-material-3-design-system - Typography that
+  represents distinct operational meanings needs a ThemeExtension; the Material
+  text scale alone cannot identify code or log content.
+- Action next time: Keep visual semantics central and test their presence in both
+  theme variants before adding feature screens.
+
 - [2026-08-03] WK-20260803-gh-20-configure-quality-ci - A workflow that exists
   locally is not proof that GitHub ran it or that a branch is protected.
 - Action next time: Validate syntax and equivalent local commands now; report
