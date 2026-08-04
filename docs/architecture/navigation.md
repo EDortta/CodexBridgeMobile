@@ -47,8 +47,8 @@ one returns it to its root.
 
 This is the failure mode the shell has to defend against: a shell that rebuilds
 its subtree on every destination change silently loses state and still looks
-like normal navigation. `app_router_test.dart` asserts a pushed detail route
-survives a round trip through another destination.
+like normal navigation. `test/app/app_router_test.dart` asserts a pushed detail
+route survives a round trip through another destination.
 
 ## Deep links
 
@@ -62,10 +62,16 @@ separate, explicitly gated change.
 
 ## Composition root
 
-`lib/core/navigation/app_router.dart` is the navigation composition root and the
-only file allowed to import a feature's `presentation/` layer. Features keep the
-boundary described in [state-architecture.md](state-architecture.md): they
-import their own layers and `lib/core/`, never another feature.
+`lib/app/app_router.dart` is the navigation composition root and the only file
+allowed to import a feature's `presentation/` layer. Features keep the boundary
+described in [state-architecture.md](state-architecture.md): they import their
+own layers and `lib/core/`, never another feature and never `lib/app/`.
+
+That last direction is why `AppRoutes` and `AppDestination` stay in
+`lib/core/navigation/` while the router, the shell, and the detail screen live
+in `lib/app/`: feature screens read a destination's path to navigate, so moving
+those two files into `lib/app/` would make every feature depend on the
+composition root.
 
 The router creates its navigator keys per call, so two routers can coexist —
 for example across tests in one file — without sharing a `GlobalKey`.

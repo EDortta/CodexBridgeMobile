@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:codex_bridge_mobile/app/app.dart';
+import 'package:codex_bridge_mobile/app/app_router.dart';
 import 'package:codex_bridge_mobile/core/design/app_theme.dart';
 import 'package:codex_bridge_mobile/core/design/operational_text_theme.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
-import 'package:codex_bridge_mobile/core/navigation/app_router.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/mission_providers.dart';
-import 'package:codex_bridge_mobile/main.dart';
 
 void main() {
   testWidgets('shows the operator missions on the Work destination', (

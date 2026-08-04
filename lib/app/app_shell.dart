@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../design/app_tokens.dart';
-import 'app_destinations.dart';
-import 'app_routes.dart';
+import '../core/design/app_tokens.dart';
+import '../core/navigation/app_destinations.dart';
+import '../core/navigation/app_routes.dart';
 
 /// Persistent frame around the primary destinations.
 ///
