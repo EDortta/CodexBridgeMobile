@@ -1,5 +1,18 @@
 # Napkin Lessons Learned
 
+- [2026-08-03] WK-20260803-gh-18-configure-primary-navigation - A test for
+  "state survives a tab switch" passes just as happily against a shell that
+  never preserved anything, because the widget is rebuilt either way.
+- Action next time: Break the mechanism on purpose and watch the test fail
+  before trusting it — here, forcing `goBranch(initialLocation: true)`.
+
+- [2026-08-03] WK-20260803-gh-18-configure-primary-navigation - Session-close is
+  not atomic: a dropped connection left napkin-lessons, the issue file, and
+  RESUME.md updated while `handoff.md` — the only file that narrates what
+  happened — was still missing.
+- Action next time: Write the `handoff.md` entry first at session close, then
+  the derived artifacts; the recoverable state is worth more than tidy ordering.
+
 - [2026-08-03] WK-20260803-gh-19-riverpod-feature-boundaries - Repository
   replacement stays local to tests when widgets depend on feature state, not data adapters.
 - Action next time: Override the feature repository provider in a `ProviderScope`.

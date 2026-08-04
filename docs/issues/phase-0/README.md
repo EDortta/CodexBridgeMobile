@@ -13,3 +13,4 @@ issue order, one feature branch and one validated commit at a time.
 - [#20 — Configure lint, tests, and Android CI](issues/020-configure-quality-ci-[finished].md)
 - [#17 — Configure Material 3 design system](issues/017-configure-material-3-design-system-[finished].md)
 - [#19 — Configure Riverpod state architecture and feature boundaries](issues/019-configure-riverpod-feature-boundaries-[finished].md)
+- [#18 — Implement application shell and primary navigation](issues/018-configure-primary-navigation-[finished].md)

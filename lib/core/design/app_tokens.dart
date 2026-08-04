@@ -25,4 +25,9 @@ abstract final class AppMotion {
 abstract final class AppIcons {
   static const IconData terminal = Icons.terminal_rounded;
   static const IconData status = Icons.check_circle_outline_rounded;
+  static const IconData projects = Icons.folder_outlined;
+  static const IconData work = Icons.assignment_outlined;
+  static const IconData conversations = Icons.forum_outlined;
+  static const IconData account = Icons.person_outline_rounded;
+  static const IconData decisions = Icons.rule_rounded;
 }

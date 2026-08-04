@@ -49,4 +49,5 @@ Leitura escopada: só quem for mexer na área precisa.
 - `clara-definitions/00-index.md` — ao trabalhar em Clara / WhatsApp / comprovantes
 -->
 
-- (none)
+- `docs/architecture/state-architecture.md` — ao tocar em feature, provider ou repositório
+- `docs/architecture/navigation.md` — ao tocar em rota, shell ou destino primário
