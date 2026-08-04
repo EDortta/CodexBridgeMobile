@@ -10,10 +10,9 @@
   merged into `development`, pushed, and closed on GitHub.
 - **Epic #1 is closed.** Its two open points were resolved today: `lib/app/` now
   exists, and the CI has executed on GitHub for the first time — green.
-- `origin/development` is at `dd16f52`. `main` stays at `f33db38`.
-- **PR #49 (`development` → `main`) is open and unmerged.** It is what triggered
-  the CI run; merging it is an operator decision (AGENTS.md §7). Merging does
-  not imply deploy.
+- PR #49 (`development` → `main`) was merged on operator instruction, and
+  `development` fast-forwarded to it. Both branches are at `f3a834c`, with 0/0
+  divergence. No deploy was performed; none is implied.
 
 ## Changed files (this session)
 
@@ -38,11 +37,11 @@ screens import them, so moving them would invert the feature → app boundary.
 - Not validated: OS-level deep linking, unknown-path handling, any run on a
   physical device or emulator.
 
-## Next Step (DO THIS FIRST)
+## Closed
 
-Ask the operator whether to merge PR #49 into `main` (consolidating Phase 0), or
-to leave `main` at `f33db38` and start Epic #2 — Autenticação e conexão com
-Codex Bridge — from `development`.
+PR #49 was merged: `main` and `development` are both at `f3a834c`. Phase 0 needs
+nothing further. Active work continues in
+[`docs/issues/phase-1/RESUME.md`](../phase-1/RESUME.md).
 
 ## Loose end (not owned by any issue)
 
