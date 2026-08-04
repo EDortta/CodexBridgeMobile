@@ -1,0 +1,14 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'app/app.dart';
+import 'app/app_router.dart';
+
+/// Process entry point.
+///
+/// It only starts the composition root in `lib/app/`; anything a test has to
+/// exercise lives there instead, since `main()` itself cannot be called from
+/// one.
+void main() => runApp(
+  ProviderScope(child: CodexBridgeMobileApp(router: createAppRouter())),
+);

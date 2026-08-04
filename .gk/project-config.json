@@ -1,0 +1,96 @@
+{
+  "agents": [
+    "claude",
+    "cursor",
+    "gemini",
+    "llm-api",
+    "openai-agents"
+  ],
+  "automation_commands": [],
+  "capabilities": [
+    "actionable-artifacts",
+    "apk-installation",
+    "approvals",
+    "assisted-reading",
+    "conversations",
+    "operational-follow-up",
+    "operator-authorizations",
+    "reviews"
+  ],
+  "capability_domains": {
+    "actionable-artifacts": "collaboration-review",
+    "apk-installation": "package-installation",
+    "approvals": "decision-governance",
+    "assisted-reading": "file-assistance",
+    "conversations": "collaboration-review",
+    "operational-follow-up": "decision-governance",
+    "operator-authorizations": "decision-governance",
+    "reviews": "collaboration-review"
+  },
+  "config_version": 4,
+  "domains": [
+    "collaboration-review",
+    "decision-governance",
+    "file-assistance",
+    "package-installation"
+  ],
+  "frameworks": [],
+  "governance_files": [
+    "AGENTS.md",
+    "CLAUDE.md",
+    "GEMINI.md",
+    ".cursorrules",
+    ".windsurfrules",
+    ".docs/software-overview.md",
+    ".docs/limits.md",
+    ".gk/manifest.json",
+    ".governancekit-identity.json",
+    "docs/required-reading.md",
+    "handoff.md"
+  ],
+  "integration_status": "missing",
+  "languages": [
+    "shell"
+  ],
+  "notes": [
+    "detected 21 non-governance file(s); adoption flow should inspect before writing",
+    "provider credentials stay outside project-config.json; use credential_ref only"
+  ],
+  "package_managers": [],
+  "project_name": "CodexBridgeMobile",
+  "project_state": "existing",
+  "providers": [
+    {
+      "base_url": "https://integrate.api.nvidia.com/v1",
+      "credential_ref": ".credentials/llm/nvidia.key",
+      "mode": "file-ref",
+      "model": "nvidia/nemotron-3-super-120b-a12b",
+      "name": "nvidia",
+      "purpose": "general",
+      "role": "primary",
+      "validation": "reference-required"
+    }
+  ],
+  "required_reading": [
+    "docs/required-reading.md",
+    "AGENTS.md",
+    ".docs/software-overview.md",
+    ".docs/limits.md",
+    "docs/project-rules.md",
+    ".docs/agents/programmer.md",
+    ".docs/agents/design-standards.md",
+    ".docs/agents/reviewer.md",
+    ".docs/agents/issue-automation.md",
+    ".docs/agents/council.md",
+    ".docs/agents/security.md",
+    ".docs/agents/security-standards.md",
+    ".docs/agents/privacy-compliance.md",
+    ".docs/workflows/session-restore.md",
+    ".docs/workflows/session-close.md",
+    ".docs/context-optimization.md",
+    "docs/napkin-lessons.md",
+    "docs/product-foundation.md"
+  ],
+  "scope_summary": "Codex Bridge Mobile is a mobile terminal for the Codex Bridge ecosystem that reduces human decision latency by supporting approvals, authorizations, follow\u2011up, reviews, conversations, actionable artifacts, assisted file reading, and APK installation while operating offline\u2011capable and audit\u2011ready.",
+  "selected_agent": "llm-api"
+}

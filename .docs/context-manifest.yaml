@@ -1,0 +1,85 @@
+# AI-Agents kit-owned context selection contract.
+$schema: schemas/context-manifest.schema.json
+version: 1
+
+base:
+  required:
+    - path: AGENTS.md
+      mode: full
+    - path: .docs/software-overview.md
+      mode: full
+    - path: .docs/limits.md
+      mode: full
+    - path: docs/required-reading.md
+      mode: full
+
+project:
+  include:
+    - path: docs/project-rules.md
+      mode: full
+
+tasks:
+  implementation:
+    include:
+      - path: .docs/agents/programmer.md
+        mode: full
+        required: true
+      - path: .docs/agents/design-standards.md
+        mode: full
+        required: true
+  review:
+    include:
+      - path: .docs/agents/reviewer.md
+        mode: full
+        required: true
+      - path: .docs/agents/design-standards.md
+        mode: full
+        required: true
+  council:
+    include:
+      - path: .docs/agents/council.md
+        mode: full
+        required: true
+
+risks:
+  runtime:
+    include:
+      - path: .docs/agents/security.md
+        mode: full
+        required: true
+      - path: .docs/agents/security-standards.md
+        mode: full
+        required: true
+  personal_data:
+    include:
+      - path: .docs/agents/privacy-compliance.md
+        mode: full
+        required: true
+
+# Baseline with deterministic fallback (characters / 4), measured 2026-07-27:
+# base_contracts=7,238; implementation contracts=7,994. Runtime risk adds 4,147.
+# The largest normal combination (implementation + runtime) is about 19,379.
+budgets:
+  total_input_tokens: 22000
+  categories:
+    base_contracts: 8000
+    task_contracts: 8500
+    risk_contracts: 4500
+    project_context: 1000
+    active_work: 3500
+    retrieved_evidence: 1000
+    reserve: 1000
+
+retrieval:
+  max_sections: 4
+  max_section_tokens: 500
+
+exclude_by_default:
+  - handoff.md
+  - docs/napkin-lessons.md
+  - docs/issues/**/archive/**
+
+telemetry:
+  path: .gk/context-telemetry.jsonl
+  retention_days: 30
+  content_capture: false
