@@ -1,38 +1,50 @@
 # Phase 0 Resume
 
-- work_id: WK-20260803-gh-18-configure-primary-navigation
-- date: 2026-08-03
-- status: done_pending_epic_closure
+- work_id: WK-20260804-gh-1-introduce-app-layer
+- date: 2026-08-04
+- status: done
 
 ## Current state
 
 - All five Phase 0 issues (#16, #20, #17, #19, #18) are implemented, validated,
-  merged into `development`, pushed to `origin`, and closed on GitHub.
-- `origin/development` is at `30def3a`. `main` stays at `f33db38` by operator
-  decision: consolidation into `main` waits for more cycles (AGENTS.md §7).
-- Public Epic #1 is still open. Two of its items are not satisfied yet, so it
-  was deliberately not closed.
+  merged into `development`, pushed, and closed on GitHub.
+- **Epic #1 is closed.** Its two open points were resolved today: `lib/app/` now
+  exists, and the CI has executed on GitHub for the first time — green.
+- `origin/development` is at `dd16f52`. `main` stays at `f33db38`.
+- **PR #49 (`development` → `main`) is open and unmerged.** It is what triggered
+  the CI run; merging it is an operator decision (AGENTS.md §7). Merging does
+  not imply deploy.
 
-## Epic #1 open points
+## Changed files (this session)
 
-1. Its scope asks for an `app/`, `core/`, and `features/` structure. `lib/core/`
-   and `lib/features/` exist; there is no `lib/app/`. Either create it or record
-   that the shell in `lib/core/navigation/` replaces it.
-2. Its acceptance asks that `flutter analyze` and `flutter test` pass **in CI**.
-   The workflow only triggers on `pull_request` and `workflow_dispatch`, and the
-   epic was integrated through local merges without a PR, so the CI has never
-   executed on GitHub. All three steps pass locally.
+- `lib/app/` — new: `app.dart` (root widget, extracted from `main.dart`),
+  `app_router.dart`, `app_shell.dart`, `destination_detail_screen.dart`, the
+  last three moved from `lib/core/navigation/`.
+- `lib/main.dart` — reduced to `runApp` only.
+- `test/app/app_router_test.dart` — moved from `test/core/navigation/`.
+- `test/widget_test.dart` — imports updated.
+- `docs/architecture/state-architecture.md` — new "Top-level layers" section.
+- `docs/architecture/navigation.md` — paths and composition root updated.
 
-   Fixing this is a decision about the workflow itself: add a `push` trigger for
-   `development`, or start opening PRs, or run it once via `workflow_dispatch`.
+`AppRoutes` and `AppDestination` stayed in `lib/core/navigation/`: four feature
+screens import them, so moving them would invert the feature → app boundary.
+
+## Checks
+
+- Local on `development` at `dd16f52`: `flutter analyze` clean,
+  `flutter test` 12/12, `flutter build apk --debug` OK.
+- CI run 30903017809 (first ever on this repo): `verify` green in 4m41s —
+  Analyze, Test, Build Android debug APK.
+- Not validated: OS-level deep linking, unknown-path handling, any run on a
+  physical device or emulator.
 
 ## Next Step (DO THIS FIRST)
 
-Decide how Epic #1's CI acceptance criterion gets met — CI has never run on
-GitHub. Then settle the `app/` directory question and close Epic #1.
+Ask the operator whether to merge PR #49 into `main` (consolidating Phase 0), or
+to leave `main` at `f33db38` and start Epic #2 — Autenticação e conexão com
+Codex Bridge — from `development`.
 
 ## Loose end (not owned by any issue)
 
-`mobile/codexbridgemobile-workspace.zip` is an untracked leftover from before
-this epic. It predates every Phase 0 issue and was deliberately left alone;
-decide whether it should be removed or tracked.
+`mobile/codexbridgemobile-workspace.zip` is untracked and predates every Phase 0
+issue; it was deliberately left alone. Decide whether to remove or track it.
