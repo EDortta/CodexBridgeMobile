@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../features/account/presentation/account_screen.dart';
-import '../../features/conversations/presentation/conversations_screen.dart';
-import '../../features/decisions/presentation/decisions_screen.dart';
-import '../../features/missions/presentation/work_screen.dart';
-import '../../features/projects/presentation/projects_screen.dart';
-import 'app_destinations.dart';
-import 'app_routes.dart';
+import '../core/navigation/app_destinations.dart';
+import '../core/navigation/app_routes.dart';
+import '../features/account/presentation/account_screen.dart';
+import '../features/conversations/presentation/conversations_screen.dart';
+import '../features/decisions/presentation/decisions_screen.dart';
+import '../features/missions/presentation/work_screen.dart';
+import '../features/projects/presentation/projects_screen.dart';
 import 'app_shell.dart';
 import 'destination_detail_screen.dart';
 

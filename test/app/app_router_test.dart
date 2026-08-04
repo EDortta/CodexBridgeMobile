@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:codex_bridge_mobile/app/app.dart';
+import 'package:codex_bridge_mobile/app/app_router.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
-import 'package:codex_bridge_mobile/core/navigation/app_router.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_routes.dart';
-import 'package:codex_bridge_mobile/main.dart';
 
 void main() {
   testWidgets('reaches the four primary destinations from the shell', (

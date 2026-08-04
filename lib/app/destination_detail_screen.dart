@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../design/app_tokens.dart';
-import 'app_destinations.dart';
+import '../core/design/app_tokens.dart';
+import '../core/navigation/app_destinations.dart';
 
 /// Placeholder detail route nested inside a destination's own navigator.
 ///
