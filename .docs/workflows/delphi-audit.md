@@ -6,7 +6,7 @@ Trigger: human requests a Delphi quality audit for a project.
 ## Prerequisites
 
 - Project uses Delphi 11/12 (`.pas`/`.dpr`/`.dpk` files present).
-- `.docs/software-overview.md` and `.docs/limits.md` are ready.
+- `docs/software-overview.md` and `docs/limits.md` are ready.
 - Human has explicitly requested this audit.
 
 ## Scope

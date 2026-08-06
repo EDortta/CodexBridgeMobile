@@ -10,7 +10,7 @@ Specialized roles and precedence (when agents disagree):
 - [privacy-compliance.md](./privacy-compliance.md) — GDPR/LGPD-oriented privacy requirements and review checklist
 
 Low-token load rule:
-- Start with `/AGENTS.md`, `.docs/software-overview.md`, and `.docs/limits.md`.
+- Start with `/AGENTS.md`, `docs/software-overview.md`, and `docs/limits.md`.
 - Load role and workflow files only when relevant to the task.
 - Do not load issue history, handoff, or lessons unless resuming active work.
 

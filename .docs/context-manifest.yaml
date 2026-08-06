@@ -6,9 +6,9 @@ base:
   required:
     - path: AGENTS.md
       mode: full
-    - path: .docs/software-overview.md
+    - path: docs/software-overview.md
       mode: full
-    - path: .docs/limits.md
+    - path: docs/limits.md
       mode: full
     - path: docs/required-reading.md
       mode: full

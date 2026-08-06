@@ -15,7 +15,7 @@ issue order, one feature branch and one validated commit at a time.
 ## External dependency: the backend API contract
 
 The Codex Bridge backend is an external dependency and is not operated from this
-repository (`.docs/software-overview.md`). Its API is being specified in
+repository (`docs/software-overview.md`). Its API is being specified in
 **`EDortta/CodexBridge`**, epic
 [#1 — Expose contract-first API for CodexBridgeMobile](https://github.com/EDortta/CodexBridge/issues/1),
 created 2026-08-04. None of it is implemented yet.

@@ -156,7 +156,7 @@ see Provenance. The registration rule below is what will eventually correct them
 ## 5. The questions that select the council
 
 The council is shaped by what the project **is**. That is not a new questionnaire:
-`.docs/software-overview.md` already ends in a **Target Project Checklist** of six
+`docs/software-overview.md` already ends in a **Target Project Checklist** of six
 lines. Read each line adversarially and it becomes the question.
 
 | line of the checklist | the question | what it selects |
@@ -168,7 +168,7 @@ lines. Read each line adversarially and it becomes the question.
 | external services and data stores | what leaves the process, and what arrives untrusted? | **the adversarial user** |
 | known risky areas or non-obvious behavior | where has this project **already regressed once**? | the skeptics' seed — read `docs/napkin-lessons.md` |
 
-- [MANDATORY] If `.docs/software-overview.md` is not ready
+- [MANDATORY] If `docs/software-overview.md` is not ready
   (`project_context_ready: yes`), **the council cannot be selected** — every
   question above reads from it. Say so and stop; do not guess the answers.
   (`/AGENTS.md` §1b.)

@@ -12,8 +12,8 @@ importa na hora de **escrever**, não de ler.
 | Documento | Dono | O que é |
 |---|---|---|
 | `AGENTS.md` | kit | contrato universal de operação |
-| `.docs/software-overview.md` | kit semeia, **projeto preenche** | produto, stack, módulos, comportamento |
-| `.docs/limits.md` | kit semeia, **projeto preenche** | fronteiras duras do agente |
+| `docs/software-overview.md` | kit semeia, **projeto preenche** | produto, stack, módulos, comportamento |
+| `docs/limits.md` | kit semeia, **projeto preenche** | fronteiras duras do agente |
 | `docs/project-rules.md` | **projeto** | regras que valem só aqui |
 
 ## Conforme o papel do trabalho
@@ -30,6 +30,20 @@ importa na hora de **escrever**, não de ler.
 | implementar seleção/orçamento de contexto | `.docs/context-optimization.md` | kit |
 <!-- AI-AGENTS:END -->
 
+> **Onde a documentação deste projeto mora:** em `docs/`, e só lá. Decisão do
+> operador em 2026-08-06: `software-overview.md` e `limits.md` são arquivos reais
+> em `docs/`, sem cópia nem symlink em `.docs/`. Todas as referências que o kit
+> semeou apontando para `.docs/…` foram repontadas.
+>
+> **Consequência conhecida:** `scripts/install-agents-kit.sh` lê o readiness gate
+> em `.docs/software-overview.md` / `.docs/limits.md` (linhas ~1980) e sairá
+> `exit 30` no próximo `--upgrade`, e esse `--upgrade` também reverterá as
+> referências repontadas nos arquivos de contrato que o kit possui (`AGENTS.md`,
+> `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.windsurfrules`,
+> `.github/copilot-instructions.md`, `.amazonq/`, o bloco gerado acima,
+> `.gk/project-config.json`, `.docs/**`). A correção definitiva é o kit passar a
+> aceitar `docs/`; até lá, repontar de novo após cada upgrade.
+
 ## Deste projeto
 
 Documentos específicos deste repositório. Esta seção é 100% do projeto: nenhum upgrade
@@ -37,7 +51,8 @@ a toca. Use `- (none)` se genuinamente não houver nenhum.
 
 - `docs/project-rules.md` — regras específicas deste projeto (também na tabela acima)
 - `docs/product-foundation.md` — escopo e premissas canônicas do produto
-- `docs/issues/phase-0/README.md` — épico público ativo e ordem de execução
+- `docs/issues/phase-1/README.md` — épico público **ativo** (Epic #2) e ordem de execução
+- `docs/issues/phase-0/README.md` — épico encerrado; mantido para consulta
 - `docs/napkin-lessons.md` — lições curtas; leia ao retomar trabalho relacionado
 
 ## Por área

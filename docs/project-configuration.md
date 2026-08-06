@@ -31,8 +31,8 @@
 
 - `docs/required-reading.md`
 - `AGENTS.md`
-- `.docs/software-overview.md`
-- `.docs/limits.md`
+- `docs/software-overview.md`
+- `docs/limits.md`
 - `docs/project-rules.md`
 - `.docs/agents/programmer.md`
 - `.docs/agents/design-standards.md`

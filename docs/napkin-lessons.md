@@ -43,6 +43,47 @@
   contract. Keep mandatory documents atomic and save tokens by excluding unrelated
   roles/history rather than truncating rules.
 
+- [2026-08-06] WK-20260806-phase-0-council - O `grep -r` deste ambiente é uma
+  função que exec um binário ugrep-compatível com `--ignore-files`, então ele
+  respeita o `.gitignore` — e os 8 arquivos que carregam o contrato de leitura
+  (`AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.windsurfrules`,
+  `.github/copilot-instructions.md`, `.amazonq/`, `handoff.md`) são justamente
+  gitignored pelo kit. A varredura do move `.docs/` → `docs/` feita do jeito
+  óbvio reportou limpo e escondeu 20 das 23 referências quebradas.
+- Action next time: Para varredura de path, enumerar os arquivos explicitamente
+  (`find . -type f -print0 | xargs -0 grep -In <padrão>`) ou usar `command grep`;
+  nunca confiar num `grep -r` limpo num repo cujo `.gitignore` cobre os próprios
+  contratos. E cruzar o resultado recursivo com um `grep -c` por arquivo conhecido
+  antes de declarar a varredura completa.
+
+- [2026-08-06] WK-20260806-phase-0-council - Pôr os ignores do projeto (`.env`,
+  `build/`, `.dart_tool/`) DENTRO do bloco `# AI-Agents kit … # end` fez uma
+  reescrita do bloco levá-los junto: 711 untracked e `.env` deixando de ser
+  ignorado, no repo cujo `limits.md` proíbe segredo em qualquer artefato.
+- Action next time: Tudo que é do projeto vai FORA de bloco gerenciado por
+  ferramenta — o bloco é território de quem o reescreve. Depois de qualquer
+  upgrade de kit, rodar `git check-ignore -v .env build/ .dart_tool/` antes de
+  qualquer `git add`.
+
+- [2026-08-06] WK-20260806-phase-0-council - Provar o build só com
+  `flutter build apk --debug` esconde exatamente o que o template Flutter deixa
+  para o desenvolvedor: `INTERNET` só existe nos manifests de debug/profile, e
+  `release` assina com a debug keystore. A Phase 0 declarou o build "provado" com
+  a única variante que não expõe nenhum dos dois.
+- Action next time: Quando o gate prova uma variante de build, escrever quais
+  variantes ele NÃO prova e o que cada uma resolve de forma diferente (merge de
+  manifest, assinatura, R8). Antes da primeira feature de rede, conferir o
+  manifest `main/`, não o mergeado do debug.
+
+- [2026-08-06] WK-20260806-phase-0-council - O concílio rodou violando o próprio
+  §5: o gate manda ler `.docs/software-overview.md` e parar se não estiver pronto,
+  o arquivo tinha sido movido para `docs/`, e eu li do lugar novo e segui. O gate
+  que existe para impedir o concílio de adivinhar as próprias lentes virou path
+  pendurado e falhou ABERTO.
+- Action next time: Quando um `[MANDATORY]` aponta para um arquivo que não existe
+  mais, isso não é divergência de path a anotar de passagem — é o gate falhando.
+  Parar, dizer, e só então decidir se segue com exceção escrita.
+
 Short, practical lessons captured at session close.
 Keep each lesson concise and actionable.
 

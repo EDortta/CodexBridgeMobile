@@ -6,7 +6,7 @@ Trigger: human requests a PHP quality audit for a project.
 ## Prerequisites
 
 - Project uses PHP 8.x (`.php` files present, `composer.json` optional but expected).
-- `.docs/software-overview.md` and `.docs/limits.md` are ready.
+- `docs/software-overview.md` and `docs/limits.md` are ready.
 - Human has explicitly requested this audit.
 
 ## Scope
