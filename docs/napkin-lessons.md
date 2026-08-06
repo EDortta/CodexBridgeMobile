@@ -84,6 +84,21 @@
   mais, isso não é divergência de path a anotar de passagem — é o gate falhando.
   Parar, dizer, e só então decidir se segue com exceção escrita.
 
+- [2026-08-06] WK-20260806-phase-0-council - Escrevi "o installer é território do
+  kit e não é corrigível daqui" e registrei um risco aceito em cima disso. A
+  fonte do kit estava um diretório ao lado (`~/Sync/Projects/AI/Agents`), já lia
+  `docs/` nas linhas 2070-2071, e trazia `migrate_readiness_files_to_docs()` para
+  fazer exatamente a migração que eu tratei como desvio. A cópia vendorizada
+  aqui estava 90 linhas atrasada. Confundi "este arquivo é gerado" com "a
+  correção está fora de alcance", e o operador pegou perguntando se não estávamos
+  na pasta pai dos dois projetos.
+- Action next time: Antes de declarar algo não-corrigível ou de escrever risco
+  aceito por limitação de ferramenta, achar a FONTE da ferramenta e ler a versão
+  dela — `find ~/Sync/Projects -name <arquivo> -not -path <este repo>` responde em
+  um comando. Cópia vendorizada com cabeçalho "do not edit" diz onde não editar,
+  não que o upstream não tenha resolvido. E comparar `wc -l` das duas: divergência
+  de tamanho é o sinal mais barato de cópia velha.
+
 Short, practical lessons captured at session close.
 Keep each lesson concise and actionable.
 

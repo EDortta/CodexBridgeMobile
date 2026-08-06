@@ -122,13 +122,30 @@ verified; §2 wants a failing test or a written acceptance, not a claim.
    left untouched: rewriting a record of what happened falsifies it.
    `required-reading.md` now names phase-1 as the active epic.
 
-   **Accepted risk, written down (`/AGENTS.md` §9):** `install-agents-kit.sh`
-   reads its readiness gate from `.docs/software-overview.md` and
-   `.docs/limits.md` (~line 1980). With no file and no symlink there, the next
-   `--upgrade` exits 30, and it will also revert every repointed reference in
-   kit-owned files. The installer is kit territory and is not fixable from this
-   repository. Until the kit accepts `docs/`, an upgrade means: run it, then
-   repoint again. Recorded in `docs/required-reading.md`.
+   **Correction, same day.** This entry first recorded an accepted risk: that
+   `install-agents-kit.sh` reads its readiness gate from `.docs/` (~line 1980),
+   so `--upgrade` would exit 30 forever and the kit "is not fixable from this
+   repository". That was wrong, and the operator caught it by asking whether the
+   kit source was not simply a sibling directory. It is:
+   `/home/esteban/Sync/Projects/AI/Agents` (`EDortta/AI-Agents`).
+
+   **The upstream installer already reads `docs/`** — `SO_FILE`/`LIM_FILE` at
+   source lines 2070-2071, against 1980-1981 in the copy vendored here, which is
+   90 lines behind (2021 vs 2111). Upstream also ships
+   `migrate_readiness_files_to_docs()` (source line 1847), whose only job is to
+   move these two files out of `.docs/` — and which deletes a `.docs/` symlink on
+   sight, commenting that the symlink "was the workaround for this very
+   misfiling". The kit's layout is: kit files in `.docs/`, the two files the
+   project fills in `docs/`.
+
+   So the move made here is not a deviation the project must carry — it is the
+   layout upstream already converged on, and the `exit 30` is a stale vendored
+   copy, not a boundary. The remaining action is to upgrade the kit copy from the
+   sibling source, not to accept anything. Nothing about this is a standing risk.
+
+   The lesson is recorded in `docs/napkin-lessons.md`: "not fixable from here"
+   was asserted about a repository that was one directory away and already had
+   the fix.
 6. **The three untested mechanisms** — `test/architecture/layer_boundaries_test`
    and `test/core/design/app_tokens_test` added; suite 12 → 17, `analyze` clean.
    Each new assertion was falsified before being trusted: a feature importing

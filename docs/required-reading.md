@@ -35,14 +35,17 @@ importa na hora de **escrever**, não de ler.
 > em `docs/`, sem cópia nem symlink em `.docs/`. Todas as referências que o kit
 > semeou apontando para `.docs/…` foram repontadas.
 >
-> **Consequência conhecida:** `scripts/install-agents-kit.sh` lê o readiness gate
-> em `.docs/software-overview.md` / `.docs/limits.md` (linhas ~1980) e sairá
-> `exit 30` no próximo `--upgrade`, e esse `--upgrade` também reverterá as
-> referências repontadas nos arquivos de contrato que o kit possui (`AGENTS.md`,
-> `CLAUDE.md`, `GEMINI.md`, `.cursorrules`, `.windsurfrules`,
-> `.github/copilot-instructions.md`, `.amazonq/`, o bloco gerado acima,
-> `.gk/project-config.json`, `.docs/**`). A correção definitiva é o kit passar a
-> aceitar `docs/`; até lá, repontar de novo após cada upgrade.
+> **Isto acompanha o kit, não o contraria.** O `install-agents-kit.sh` da fonte
+> (`~/Sync/Projects/AI/Agents`, `EDortta/AI-Agents`) já lê `docs/software-overview.md`
+> e `docs/limits.md`, e traz `migrate_readiness_files_to_docs()` justamente para
+> tirar esses dois arquivos de `.docs/`. O layout do kit é: arquivos do kit em
+> `.docs/`, os dois que o projeto preenche em `docs/`.
+>
+> **Pendência operacional:** a cópia de `scripts/install-agents-kit.sh` vendorizada
+> neste repositório está 90 linhas atrasada e ainda procura o readiness gate em
+> `.docs/` (linha ~1980), então ela sai `exit 30`. Não é limite do kit — é cópia
+> velha. Rodar o upgrade a partir da fonte resolve, e nenhuma referência precisa
+> ser repontada de novo depois disso.
 
 ## Deste projeto
 
