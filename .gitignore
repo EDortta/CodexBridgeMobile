@@ -11,16 +11,7 @@ GEMINI.md
 .github/copilot-instructions.md
 .amazonq/rules/ai-agents.md
 .credentials
-.env
-.env.*
 handoff.md
-.dart_tool/
-.flutter-plugins
-.flutter-plugins-dependencies
-.idea/
-*.iml
-build/
-android/.gradle/
 new-tag.sh
 scripts/install-agents-kit.sh
 scripts/agent-worktree.sh
@@ -30,3 +21,40 @@ scripts/agent-worktree.sh
 .gk/context-telemetry.jsonl
 .gk/overwritten/
 # end AI-Agents kit
+
+# --- Project-owned ignores ---------------------------------------------------
+# These live OUTSIDE the kit block on purpose. They were inside it until
+# 2026-08-06, when a kit rewrite replaced the block and took them along: `.env`
+# stopped being ignored and `git status -uall` went from 1 to 711 untracked
+# paths. A managed block belongs to whoever rewrites it — project rules go here.
+# See docs/napkin-lessons.md [2026-08-06] WK-20260806-phase-0-council.
+
+# Secrets — never tracked (docs/limits.md, Security Boundary)
+.env
+.env.*
+*.keystore
+*.jks
+key.properties
+
+# Flutter / Dart build output
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+
+# Android
+android/.gradle/
+android/local.properties
+android/captures/
+
+# IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+
+# Local workspace archives
+mobile/*.zip
