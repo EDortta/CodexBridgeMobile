@@ -39,16 +39,33 @@ Screens and tests navigate through those constants — or through
 
 ## State preservation
 
-Each `StatefulShellBranch` carries its own navigator key, so a destination's
-route stack stays alive while another destination is on screen. Switching
+`StatefulShellRoute.indexedStack` keeps every branch mounted, and switching
 destinations calls `goBranch(index, initialLocation: index == currentIndex)`:
 selecting another destination restores its stack, and re-selecting the current
 one returns it to its root.
 
-This is the failure mode the shell has to defend against: a shell that rebuilds
-its subtree on every destination change silently loses state and still looks
-like normal navigation. `test/app/app_router_test.dart` asserts a pushed detail
-route survives a round trip through another destination.
+The explicit `navigatorKey` on each `StatefulShellBranch` is **not** what makes
+this work, and this section used to say it was. `go_router` already creates a
+branch key when none is given (`StatefulShellBranch`'s constructor defaults it to
+`GlobalKey<NavigatorState>()`); ours only adds a `debugLabel`. Deleting it would
+change nothing and break no test — so no claim rests on it.
+
+`test/app/app_router_test.dart` asserts that a **pushed detail route** survives a
+round trip through another destination — that is, the branch's route stack. Read
+the scope precisely:
+
+- covered: the route stack of an inactive branch is not discarded, and
+  `goBranch(initialLocation: true)` on re-selection returns the branch to its
+  root. Forcing `initialLocation: true` unconditionally breaks the first of
+  these, which is what makes the assertion load-bearing.
+- `not validated:` preservation of **widget state** — scroll offset, typed text,
+  expansion state. Every screen in this phase is stateless and the mock lists are
+  two items long, so there is nothing stateful to lose and the test cannot tell a
+  preserving shell from a rebuilding one on that axis. The first Phase 1 screen
+  with a form or a long list is where this becomes testable, and it should arrive
+  with that test.
+
+Recorded by the council round of 2026-08-06 (`docs/issues/phase-0/RESUME.md`).
 
 ## Deep links
 

@@ -12,8 +12,14 @@
   pass.
 - Navigation conventions are documented in `docs/architecture/navigation.md`.
 - The state-preservation test was checked against a shell that always resets the
-  branch: it fails there and passes with per-branch restore, so it is guarding
-  the risk it claims to guard.
+  branch (`goBranch(initialLocation: true)` forced): it fails there and passes
+  with per-branch restore. That falsification was manual and left no artifact —
+  carried forward as an open item by the council round of 2026-08-06.
+- Corrected 2026-08-06: this bullet previously concluded "so it is guarding the
+  risk it claims to guard". It guards the **route stack**, not widget state. The
+  risk as written on line 44 names a shell that "silently loses state"; every
+  screen here is stateless, so no test in this phase can distinguish the two on
+  that axis. See `docs/architecture/navigation.md`, "State preservation".
 - Not validated: OS-level deep linking (no manifest intent filters, as scoped
   out) and unknown-path handling, which falls back to GoRouter's default error
   screen.
@@ -42,8 +48,12 @@
   the matching destination; the Decisions entry point is reachable from all
   four.
 - Risk: a shell that rebuilds its subtree on every tab change silently loses
-  state, and the failure looks like normal navigation. Per-branch navigator
-  keys prevent it, and a widget test asserts state survives a round trip.
+  state, and the failure looks like normal navigation. `StatefulShellRoute
+  .indexedStack` plus `goBranch(initialLocation: index == currentIndex)` prevent
+  it, and a widget test asserts the branch's route stack survives a round trip.
+  (Corrected 2026-08-06: the credit previously went to "per-branch navigator
+  keys", which `go_router` supplies by default — ours only add a `debugLabel`
+  and carry no behaviour.)
 - Operations: run dependency resolution, analysis, widget tests, and the
   Android debug build.
 

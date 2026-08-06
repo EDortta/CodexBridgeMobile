@@ -17,10 +17,13 @@ abstract final class AppElevation {
   static const double card = 1;
 }
 
-abstract final class AppMotion {
-  static const Duration quick = Duration(milliseconds: 150);
-  static const Duration standard = Duration(milliseconds: 250);
-}
+// `AppMotion` (quick/standard durations) was declared here and consumed by
+// nothing — the council round of 2026-08-06 found it referenced only at its own
+// declaration. It was removed rather than tested: the only test possible against
+// an unused constant is `expect(AppMotion.quick, Duration(milliseconds: 150))`,
+// which asserts the literal against itself and would have made #17's "coberto
+// por teste" true in letter and empty in substance. Reinstate it when a screen
+// actually animates, with the animation as its test.
 
 abstract final class AppIcons {
   static const IconData terminal = Icons.terminal_rounded;

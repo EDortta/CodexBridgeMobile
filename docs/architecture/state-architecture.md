@@ -21,6 +21,16 @@ one-way:
 widget in `app/` and holds nothing else, so everything worth testing is
 reachable from a test.
 
+**This direction is enforced, not merely documented.**
+`test/architecture/layer_boundaries_test.dart` reads every import in `lib/` and
+fails on any `features/` or `core/` file that reaches `app/`, and on any feature
+that imports another feature — relative and `package:` spellings alike, resolved
+by path rather than by how they are written. Until 2026-08-06 the rule lived only
+in the paragraph above, which meant the next screen could invert it and merge
+green. That is why `AppRoutes` and `AppDestination` stayed in
+`core/navigation/`: moving them to `app/` would make four feature screens import
+the composition root, and the test now says so out loud.
+
 ## Feature boundary
 
 Each feature owns three layers:
