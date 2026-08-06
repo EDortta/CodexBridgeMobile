@@ -1,6 +1,13 @@
 name: Flutter CI
 
+# `pull_request` alone left this gate decorative: docs/issues/phase-0/epic.md
+# integrates each issue branch by a LOCAL merge into `development`, which arrives
+# as a `push`. Six integrations — including the merge that added this file —
+# landed without ever running it. Triggers must match how the project actually
+# integrates, not how it might.
 on:
+  push:
+    branches: [main, development]
   pull_request:
   workflow_dispatch:
 
@@ -26,3 +33,15 @@ jobs:
         run: flutter test
       - name: Build Android debug APK
         run: flutter build apk --debug
+      # The debug variant merges src/debug/AndroidManifest.xml, which carries
+      # permissions the shipped artifact does not. Building release is what makes
+      # a manifest-merge gap fail here instead of on the operator's device.
+      - name: Build Android release APK
+        run: flutter build apk --release
+      - name: Assert release manifest grants INTERNET
+        run: |
+          merged=$(find build/app/intermediates -name AndroidManifest.xml -path '*release*' | head -1)
+          test -n "$merged" || { echo "merged release manifest not found"; exit 1; }
+          grep -q 'android.permission.INTERNET' "$merged" \
+            || { echo "release manifest is missing INTERNET"; exit 1; }
+          echo "ok: $merged grants INTERNET"

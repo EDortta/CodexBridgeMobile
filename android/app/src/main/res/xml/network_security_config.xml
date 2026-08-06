@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Network policy for every build variant.
+
+  `docs/limits.md` requires device permissions to be granular and
+  feature-justified, so cleartext is denied globally: the only backend this app
+  talks to is the Codex Bridge gateway over TLS. A plain-HTTP request fails at
+  the platform level rather than silently downgrading.
+
+  The gateway host is declared explicitly so the policy is readable as
+  documentation of what this client is allowed to reach. Adding a host here does
+  not grant anything the base config does not already allow — it exists to keep
+  the trust decision visible.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- Codex Bridge gateway (frida), which fronts the CodexBridge service on
+         devel3. TLS on port 8443. -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">frida.inovacaosistemas.com.br</domain>
+    </domain-config>
+</network-security-config>
