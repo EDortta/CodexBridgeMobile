@@ -47,7 +47,7 @@ Exit code is 1 if any non-advisory check fails — use it as a merge gate.
 - Commit `docs/codemap.md` with the code — treat it as a first-class artifact, not a generated file to ignore.
 - Run `resume` in your prompt starter: *"Run `governancekit resume` and use the output to orient yourself before planning."*
 - Review `docs/napkin-lessons.md` in team retrospectives — it captures non-obvious decisions.
-- One `.docs/limits.md` per repo, reviewed quarterly by the team lead.
+- One `docs/limits.md` per repo, reviewed quarterly by the team lead.
 
 ## Prompt starter for senior sessions
 "Run `governancekit resume`. Then read AGENTS.md, software-overview.md, and limits.md. Report what you find and propose a focused plan before writing any code."

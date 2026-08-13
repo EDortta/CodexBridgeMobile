@@ -10,7 +10,12 @@ Run this at the end of each implementation stage/session.
 4. Update active `docs/issues/<epic>/RESUME.md`.
 5. Ensure `RESUME.md` contains exactly one `Next Step (DO THIS FIRST)`.
 6. Ensure planning docs and commit plan use the same `work_id`.
-7. If automation exists (for example `session-close` in dev-workflow), execute it.
+7. **State what stays open for the next day** (`AGENTS.md` §1c). Run
+   `governancekit --root <project> concurrency --closing` and record, in `handoff.md`,
+   one line per branch/worktree that survives this session saying **what it holds**.
+   A front left open without that line is a front nobody can pick up tomorrow.
+   Worktrees reported as holding nothing unmerged should be removed now, not carried.
+8. If automation exists (for example `session-close` in dev-workflow), execute it.
 
 ## Resume Requirements
 

@@ -47,7 +47,7 @@ O exit code é 1 se qualquer verificação não-advisory falhar — use como gat
 - Commite `docs/codemap.md` junto com o código — trate como artefato de primeira classe, não como arquivo gerado para ignorar.
 - Use `resume` no prompt de partida: *"Rode `governancekit resume` e use a saída para se orientar antes de planejar."*
 - Revise `docs/napkin-lessons.md` em retrospectivas de time — captura decisões não-óbvias.
-- Um `.docs/limits.md` por repositório, revisado trimestralmente pelo tech lead.
+- Um `docs/limits.md` por repositório, revisado trimestralmente pelo tech lead.
 
 ## Prompt sugerido para sessões sênior
 "Rode `governancekit resume`. Depois leia AGENTS.md, software-overview.md e limits.md. Reporte o que encontrar e proponha um plano focado antes de escrever qualquer código."

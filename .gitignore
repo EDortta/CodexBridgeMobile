@@ -2,25 +2,6 @@
 
 # Per-instance host identity (never tracked)
 .governancekit-identity.json
-# AI-Agents kit — managed by governancekit install-agents
-AGENTS.md
-.cursorrules
-CLAUDE.md
-.windsurfrules
-GEMINI.md
-.github/copilot-instructions.md
-.amazonq/rules/ai-agents.md
-.credentials
-handoff.md
-new-tag.sh
-scripts/install-agents-kit.sh
-scripts/agent-worktree.sh
-.docs-migration-bak/
-.gk/operator.json
-.gk/secrets.json
-.gk/context-telemetry.jsonl
-.gk/overwritten/
-# end AI-Agents kit
 
 # --- Project-owned ignores ---------------------------------------------------
 # These live OUTSIDE the kit block on purpose. They were inside it until
@@ -58,3 +39,44 @@ android/captures/
 
 # Local workspace archives
 mobile/*.zip
+# AI-Agents kit — managed by governancekit install-agents
+AGENTS.md
+.cursorrules
+CLAUDE.md
+.windsurfrules
+GEMINI.md
+.github/copilot-instructions.md
+.amazonq/rules/ai-agents.md
+.credentials
+handoff.md
+new-tag.sh
+scripts/install-agents-kit.sh
+scripts/agent-worktree.sh
+.docs-migration-bak/
+.gk/operator.json
+.gk/secrets.json
+.gk/context-telemetry.jsonl
+.gk/overwritten/
+.env
+.env.*
+.envrc
+.npmrc
+.pypirc
+.netrc
+*.pem
+*.key
+.credentials/*
+!.env.example
+!.env.sample
+!.env.template
+!.env.dist
+!.env-example
+!.env.missing
+!.credentials/.gitignore
+!.credentials/.keep
+!.credentials/README*
+!.credentials/*.example
+!.credentials/*.sample
+!.credentials/*.template
+!.credentials/*.dist
+# end AI-Agents kit

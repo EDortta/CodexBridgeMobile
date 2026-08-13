@@ -20,7 +20,7 @@ If this file conflicts with `/AGENTS.md`, follow `/AGENTS.md`.
   (`JWT_SECRET`, cipher keys, allowed origins…). No embedded default "to run in
   dev" — dev also sets env.
 - **No secret or personal identifier as a default in a tracked file.** Read it
-  from env or `~/.config` and fail when unset (the `WA_HUB_KEY` pattern); never
+  from env or `~/.config` and fail when unset; never
   `os.getenv("X") or "dev-secret"`. A fallback secret is a shipped secret.
 - Key material (`*.pem *.key *.ppk *.pfx *.ovpn id_rsa id_ed25519 *.env* .credentials`)
   is gitignored **from the first commit** and written `chmod 600` (dirs `700`) —

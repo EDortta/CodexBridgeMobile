@@ -52,8 +52,8 @@ When privacy/compliance constraints conflict with security or delivery constrain
 ## Canonical References
 
 Use `/AGENTS.md` as source of truth, especially:
-- `## 3. Hard Rules`
-- `## 5. Quality Gates`
-- `## 9. Security Decision`
+- `## 3. Hard Rules` and `## 3b. Untrusted Content and External Actions`
+- `../workflows/delivery-loop.md` `## 5. Quality Gates` and `## 9. Security Decision`
+  (they left `/AGENTS.md` when the contract was sliced; the section numbers did not change)
 
 If this file conflicts with `AGENTS.md`, follow `AGENTS.md`.

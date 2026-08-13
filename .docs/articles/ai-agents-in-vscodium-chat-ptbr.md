@@ -47,8 +47,8 @@ Isso mantém você no controle e acelera execução.
 ## 4. Arquivos que Você Deve Referenciar Sempre
 
 Neste kit, o programador deve sempre alinhar com:
-- `.docs/software-overview.md`: o que o software é e por que existe (arquivo obrigatório que o programador deve editar em cada projeto)
-- `.docs/limits.md`: limites rígidos (o que pode/não pode) (arquivo obrigatório que o programador deve editar em cada projeto)
+- `docs/software-overview.md`: o que o software é e por que existe (arquivo obrigatório que o programador deve editar em cada projeto)
+- `docs/limits.md`: limites rígidos (o que pode/não pode) (arquivo obrigatório que o programador deve editar em cada projeto)
 - `AGENTS.md`: contrato de execução e qualidade/segurança
 
 Antes de implementar, peça confirmação de leitura desses arquivos.
@@ -56,7 +56,7 @@ Antes de implementar, peça confirmação de leitura desses arquivos.
 Exemplo:
 
 ```text
-Antes de codar, leia AGENTS.md, .docs/software-overview.md e .docs/limits.md.
+Antes de codar, leia AGENTS.md, docs/software-overview.md e docs/limits.md.
 Confirme as restrições e proponha um plano.
 ```
 
@@ -88,7 +88,7 @@ Arquivos de referência:
 - "Proponha 2 soluções com trade-offs e implemente a mais segura."
 - "Aplique a menor correção possível e rode só os testes impactados."
 - "Liste os arquivos alterados e por que cada um foi necessário."
-- "Se o pedido ultrapassar .docs/limits.md, pare e peça aprovação."
+- "Se o pedido ultrapassar docs/limits.md, pare e peça aprovação."
 
 ## 8. Regra Final
 

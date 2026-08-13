@@ -90,7 +90,7 @@ Precedence: for **decisions**, `./governance-precedence.md` wins. For
   keeps coming back across rounds is how the next council gets its lens.
 - [MANDATORY] Every surviving finding closes with either a test that fails without
   the fix (`./design-standards.md` §1) or a written risk acceptance
-  (`/AGENTS.md` §9). "Fixed" without one of those is a claim, and §1 forbids it.
+  (`../workflows/delivery-loop.md` §9). "Fixed" without one of those is a claim, and §1 forbids it.
 - [PROHIBITED] Reporting a finding whose evidence is that a model found it
   convincing. The council's members are agents; **an agent's confidence is not
   evidence**, and this file is the last place that should forget it.
@@ -130,6 +130,24 @@ Optional lenses, selected by the questions in §5:
 
 ## 4. When a council runs
 
+**The moment is the delivery commit** — the commit that closes the work and precedes
+handing it back to the operator. Not the first commit of a session, and not the push:
+push may never happen, may happen weeks later, and there is no pre-push hook to hang
+anything on. The delivery commit always happens, it is the agent's own act, and it
+falls one step after `./reviewer.md` returned non-BLOCKER — which is the ordering the
+`[PROHIBITED]` below requires.
+
+- [MANDATORY] **Two rounds, then the operator.** Round 1 reports; `./programmer.md`
+  closes each surviving finding under §2. Round 2 checks the fixes. If a finding is
+  still open after round 2, **stop** — take it to the operator with the findings
+  written out. Do not run a third round. Same escalation shape as
+  `./governance-precedence.md`, which reaches for a human on round 2 rather than
+  orbiting.
+- [MANDATORY] **A finding that contradicts an established project rule leaves the
+  council.** The agent does not weigh the two and pick. That is the one-way door in
+  §1: it becomes a role conflict, goes to `./governance-precedence.md`, and the
+  operator decides.
+
 **These triggers are provisional.** They are hypotheses derived from one round —
 see Provenance. The registration rule below is what will eventually correct them.
 
@@ -137,8 +155,17 @@ see Provenance. The registration rule below is what will eventually correct them
   files). This is the exact shape of the precedent.
 - [MANDATORY] After a change to a **kit-owned or shared contract** that propagates
   to other repositories — blast radius greater than one repo.
-- [MANDATORY] When the delivery's `Tests` section contains any `not validated:`
-  on a runtime path.
+- [MANDATORY] When the delivery **adds** a `not validated:` claim — in its
+  `Tests` section, or anywhere in the entry when it has no such section. Scope
+  matters twice here, and getting it wrong cost this gate three
+  false positives: "adds" means the staged diff's own lines, because `handoff.md`
+  is append-only and reading it whole makes every past entry part of today's
+  delivery; and the section keeps prose that *mentions* the marker from being
+  read as a claim, which quoting cannot do — a genuine claim is often written
+  `not validated:` in backticks too. The earlier wording said "on a runtime
+  path"; no gate ever implemented that, and a trigger cannot judge what a claim
+  is *about*. The words are gone rather than left promising a distinction the
+  tool does not make.
 - [MANDATORY] Before a release/tag that **changes a gate**.
 - [DEFAULT] Whenever the operator asks.
 - [PROHIBITED] Running a council **instead of** `./reviewer.md`. The council runs
@@ -150,6 +177,12 @@ see Provenance. The registration rule below is what will eventually correct them
   many became tests, and how many questions were left open. Without the record,
   the triggers and the member count in this file never get to be anything but
   guesses.
+- [MANDATORY] The same round is recorded **machine-readably** for the gate:
+  `governancekit --root <project> council --record <round.json>`. The record is
+  bound to a digest of the staged diff, so a round from yesterday cannot clear
+  today's commit and an amendment invalidates the round that approved the previous
+  content. `--waive "<reason>"` exists for the legitimate exception and **requires
+  a reason**: an escape with no reason is a silent escape.
 
 ---
 
@@ -234,21 +267,35 @@ and a second one that quietly arbitrates by majority would route around that
 escalation. The prohibition on voting is `./design-standards.md` §0 applied to
 this file: agreement is a level-3 comfort with no level-1 rule behind it.
 
-**Enforcement status:** review-gated, and honestly weaker than that.
+**Enforcement status:** gated at the delivery commit, since `[2026-08-06]`.
 
-By this kit's own §0 — *a rule with nothing executable behind it is decoration* —
-**a council that nothing convenes is decoration.** Nothing in this file convenes
-it. The triggers in §4 depend on a human or an agent remembering to read them,
-which is precisely the failure mode §0 names. That is a deliberate, recorded
-choice for this cut, not an oversight:
+The previous cut of this section said the honest thing and was right about itself:
 
-- the triggers are declared **provisional** rather than dressed up as settled;
-- recording every round is `[MANDATORY]`, so the rounds that do happen produce the
-  data that says whether the triggers are worth mechanizing.
+> By this kit's own §0 — *a rule with nothing executable behind it is decoration* —
+> **a council that nothing convenes is decoration.** Nothing in this file convenes
+> it. […] Giving this file teeth […] is a future decision, and it should be made
+> from those records, not from this paragraph.
 
-Giving this file teeth — a release gate that fails when a diff hits a mandatory
-trigger with no council record — is a future decision, and it should be made from
-those records, not from this paragraph.
+It deferred the gate until the records existed. That was a closed loop: the records
+only exist if councils run, and nothing ran one. **Five weeks, zero rounds.** The
+loop was broken from outside — the operator asked for the gate at the commit, not at
+the push — and the deferral was retired rather than satisfied.
 
-`not validated:` the effect of this contract on an actual council round. Zero
-rounds have been run under it.
+What convenes it now:
+
+- `../workflows/git-delivery.md` §7 names this file at the delivery commit. It **names**, and does not
+  restate, so it cannot fall out of date when the rules here change.
+- `governancekit doctor` carries a **non-advisory** `council gate` check, and the
+  `pre-commit` hook the kit installs already refuses on exactly that. The check is
+  silent whenever nothing is staged: a gate that fired outside a commit would be
+  noise in every other flow.
+- The record is bound to a digest of the staged diff, so it clears one commit and
+  not the next.
+
+Still honest about what it does **not** reach: the triggers remain provisional; the
+release/tag trigger is out of a pre-commit hook's reach and is printed as such rather
+than dropped; and *mechanical sweep* is detected by a file-count threshold, which is a
+guess the tool labels as a heuristic every time it reports it.
+
+`not validated:` whether these five triggers are the right five. That is what the
+records are for, and now they will exist.

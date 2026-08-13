@@ -47,8 +47,8 @@ This keeps control with you while still moving fast.
 ## 4. Files You Should Always Reference
 
 In this kit, the programmer should always align with:
-- `.docs/software-overview.md`: what the software is and why it exists (mandatory file the programmer must edit for each project)
-- `.docs/limits.md`: hard boundaries (what can/cannot be done) (mandatory file the programmer must edit for each project)
+- `docs/software-overview.md`: what the software is and why it exists (mandatory file the programmer must edit for each project)
+- `docs/limits.md`: hard boundaries (what can/cannot be done) (mandatory file the programmer must edit for each project)
 - `AGENTS.md`: execution contract and quality/security expectations
 
 Before implementation, ask the agent to confirm these files were read.
@@ -56,7 +56,7 @@ Before implementation, ask the agent to confirm these files were read.
 Example:
 
 ```text
-Before coding, read AGENTS.md, .docs/software-overview.md, and .docs/limits.md.
+Before coding, read AGENTS.md, docs/software-overview.md, and docs/limits.md.
 Confirm constraints, then propose a plan.
 ```
 
@@ -88,7 +88,7 @@ Files to reference:
 - "Propose 2 solutions with trade-offs, then implement the safest one."
 - "Apply minimal scoped fix and run only impacted tests."
 - "List files changed and why each file was necessary."
-- "If request exceeds .docs/limits.md, stop and ask for approval."
+- "If request exceeds docs/limits.md, stop and ask for approval."
 
 ## 8. Final Rule
 

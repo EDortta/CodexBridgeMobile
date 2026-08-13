@@ -2,6 +2,21 @@
 
 Use only when resuming active work.
 
+## Step 0 — Declare what is open (MANDATORY)
+
+Before reading anything else, report the concurrency inventory (`AGENTS.md` §1c):
+
+```
+governancekit --root <project> concurrency
+```
+
+State how many worktrees and unmerged branches are open, which one this session sits
+on, and which hold nothing unmerged and can be removed. If the work ahead needs a
+second front, stop and ask for authorization before opening it.
+
+Without git, or without the kit, say so and continue — the inventory never blocks a
+session, but its absence must be stated rather than silently skipped.
+
 ## Active Work Detection
 
 Identify active work from one source:
