@@ -13,15 +13,3 @@ abstract interface class ServerConfigStore {
   /// persisted by any call site — present or future.
   Future<void> writeSelectedServer(ServerUrl server);
 }
-
-/// The narrow slice of platform secure storage this feature depends on.
-///
-/// Deliberately two methods wide. The point of the seam is that
-/// [ServerConfigStore]'s policy — the key, the encoding, what a corrupt value
-/// means — is testable with a fake that implements exactly what the code under
-/// test calls, and no stub that is never called (`design-standards.md` §2).
-abstract interface class SecureKeyValueStore {
-  Future<String?> read(String key);
-
-  Future<void> write(String key, String value);
-}
