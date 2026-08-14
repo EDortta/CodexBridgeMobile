@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:codex_bridge_mobile/core/storage/secure_key_value_store.dart';
 
 /// [SecureKeyValueStore] that keeps its values in a map.
@@ -62,6 +64,84 @@ class DeleteRefusingSecureKeyValueStore extends InMemorySecureKeyValueStore {
 
   @override
   Future<void> delete(String key) async => throw const KeystoreUnavailable();
+}
+
+/// A store that reads and writes, but refuses to delete the first time — and
+/// only the first time — a given key is deleted.
+///
+/// Models the realistic recovery case: a transient Keystore failure that is
+/// gone by the retry, so `sessionMayRemainOnDevice` should not still be true
+/// once the retry actually succeeds.
+class DeleteRefusingOnceSecureKeyValueStore extends InMemorySecureKeyValueStore {
+  DeleteRefusingOnceSecureKeyValueStore([super.seed]);
+
+  final Set<String> _refused = <String>{};
+
+  @override
+  Future<void> delete(String key) async {
+    if (_refused.add(key)) {
+      throw const KeystoreUnavailable();
+    }
+    await super.delete(key);
+  }
+}
+
+/// A store whose `delete` does not resolve until the test releases it.
+///
+/// Built for the sign-out/renew reentrancy tests: a plain
+/// [InMemorySecureKeyValueStore] resolves `delete` synchronously, so a second
+/// operation started right after `signOut` never actually lands *during* the
+/// keystore call — the race it is meant to close would never show up.
+class BlockingDeleteSecureKeyValueStore extends InMemorySecureKeyValueStore {
+  BlockingDeleteSecureKeyValueStore([super.seed]);
+
+  final Completer<void> _release = Completer<void>();
+
+  /// Lets a `delete` call already in flight resolve.
+  void release() {
+    if (!_release.isCompleted) {
+      _release.complete();
+    }
+  }
+
+  @override
+  Future<void> delete(String key) async {
+    await _release.future;
+    await super.delete(key);
+  }
+}
+
+/// A store whose `write` does not resolve until the test releases it.
+///
+/// Built for the renew/sign-out persist-race test: a plain
+/// [InMemorySecureKeyValueStore] resolves `write` synchronously, so a
+/// concurrent `signOut` started right after a renewal's gateway call never
+/// actually lands *during* the renewal's own keystore write — the race it is
+/// meant to close would never show up.
+class BlockingWriteSecureKeyValueStore extends InMemorySecureKeyValueStore {
+  BlockingWriteSecureKeyValueStore([super.seed]);
+
+  final Completer<void> _release = Completer<void>();
+  final Completer<void> _started = Completer<void>();
+
+  /// Resolves once a `write` call is parked and waiting on [release].
+  Future<void> get writeStarted => _started.future;
+
+  /// Lets a `write` call already in flight resolve.
+  void release() {
+    if (!_release.isCompleted) {
+      _release.complete();
+    }
+  }
+
+  @override
+  Future<void> write(String key, String value) async {
+    if (!_started.isCompleted) {
+      _started.complete();
+    }
+    await _release.future;
+    await super.write(key, value);
+  }
 }
 
 /// What `flutter_secure_storage` raises when the platform refuses: an

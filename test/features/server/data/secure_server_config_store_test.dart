@@ -68,6 +68,20 @@ void main() {
     );
   });
 
+  test('a keystore that cannot be read reads as no server selected', () async {
+    // `SecureSessionStore.readSession` already survives this — a Keystore key
+    // lost to a backup restore throws on every key it backs, not just the
+    // session's. The two features now share one `SecureKeyValueStore`
+    // (`core/storage/`), so this store must fail the same way or the server
+    // settings screen is the one screen with no way back on that launch.
+    expect(
+      await SecureServerConfigStore(
+        const UnavailableSecureKeyValueStore(),
+      ).readSelectedServer(),
+      isNull,
+    );
+  });
+
   test('a stored URL the rules no longer accept reads as no server', () async {
     // A value written by an older build, or one that survived a rule getting
     // stricter, must not come back as a ServerUrl that would never be accepted

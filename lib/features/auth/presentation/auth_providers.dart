@@ -39,6 +39,14 @@ final AsyncNotifierProvider<SessionController, AuthState> sessionProvider =
 /// two operations that can break it, not remembered at each of the five call
 /// sites that reach them (`design-standards.md` §3).
 class SessionController extends AsyncNotifier<AuthState> {
+  /// Bumped by [signOut]. [renew] captures this when it starts and compares
+  /// it again — once after the gateway replies, and again after the outcome
+  /// is persisted — discarding the reply if a sign-out has landed in either
+  /// window instead of resurrecting the session the operator just removed
+  /// (`design-standards.md` §3, the council round-1 and round-2 renew/
+  /// sign-out findings).
+  int _signOutGeneration = 0;
+
   @override
   Future<AuthState> build() async {
     final Session? stored = await ref.watch(sessionStoreProvider).readSession();
@@ -92,24 +100,82 @@ class SessionController extends AsyncNotifier<AuthState> {
           AuthGranted(:final Session session) => await _grant(session),
           // The explanation the operator arrived with is kept, so a rejected
           // code does not erase the reason the sign-in screen appeared.
+          //
+          // `sessionMayRemainOnDevice` is re-read from *current* state rather
+          // than reusing the value captured above: `signOut` is deliberately
+          // callable while this call is in flight (it is the "Remove from
+          // this device" retry), and it can resolve the very failure this
+          // flag reports — or hit a fresh one — before this gateway call
+          // returns. Reusing the stale value would re-raise a warning about a
+          // keystore that just went clean, or hide one that just went bad
+          // (`design-standards.md` §3).
           AuthDenied(reason: final AuthFailure failure) => SignedOut(
             reason: reason,
             failure: failure,
-            sessionMayRemainOnDevice: sessionMayRemainOnDevice,
+            sessionMayRemainOnDevice: _currentSessionMayRemainOnDevice(
+              orElse: sessionMayRemainOnDevice,
+            ),
           ),
         },
       );
     }
   }
 
+  /// The current [SignedOut.sessionMayRemainOnDevice], or [orElse] when the
+  /// state moved on to something that does not carry the flag at all.
+  bool _currentSessionMayRemainOnDevice({required bool orElse}) =>
+      switch (state.valueOrNull) {
+        SignedOut(:final bool sessionMayRemainOnDevice) =>
+          sessionMayRemainOnDevice,
+        _ => orElse,
+      };
+
   /// Renews the held session on the operator's request.
   ///
   /// Does nothing when no session is held: there is nothing to renew, and
-  /// inventing one would be a sign-in without a credential.
+  /// inventing one would be a sign-in without a credential. Also does nothing
+  /// while a renewal is already in flight — the guard excludes
+  /// `renewing: true` too, not just a state that is not [SignedIn], because a
+  /// second call entered before the first resolves would carry the same old
+  /// session into a second gateway request, and whichever reply lands last
+  /// would win even if it is the stale one.
   Future<void> renew() async {
-    if (state.valueOrNull case SignedIn(:final Session session)) {
+    if (state.valueOrNull case SignedIn(:final Session session, renewing: false)) {
+      final int signOutGeneration = _signOutGeneration;
       state = AsyncData<AuthState>(SignedIn(session, renewing: true));
-      state = AsyncData<AuthState>(await _renew(session));
+
+      final AuthOutcome outcome = await ref
+          .read(authGatewayProvider)
+          .renew(session);
+
+      if (signOutGeneration != _signOutGeneration) {
+        // `signOut` is deliberately unguarded and can land while this
+        // renewal is in flight. It already holds `state` and has already
+        // cleared the keystore, so granting or denying this reply now would
+        // either write a fresh session back after the operator asked to sign
+        // out, or clear a keystore entry that is not there to clear
+        // (`design-standards.md` §3).
+        return;
+      }
+
+      final AuthState resolved = await _resolveRenewal(session, outcome);
+
+      if (signOutGeneration != _signOutGeneration) {
+        // The same race, one await later: `_resolveRenewal` can itself
+        // persist a grant (`_grant` → `writeSession`), and `signOut` can land
+        // during *that* await too, after already clearing the keystore. The
+        // persist may have already written the renewed session back into a
+        // keystore the sign-out just emptied, so skipping the state write
+        // alone is not enough this time — the token has to come back out
+        // (`design-standards.md` §3, the council round-2 renew/sign-out
+        // finding).
+        if (resolved is SignedIn) {
+          await _clearStoredSession();
+        }
+        return;
+      }
+
+      state = AsyncData<AuthState>(resolved);
     }
   }
 
@@ -119,7 +185,19 @@ class SessionController extends AsyncNotifier<AuthState> {
   /// was refused by the keystore, this is the retry, and a guard here would
   /// leave the operator with a warning and no way to act on it.
   Future<void> signOut() async {
-    final SignedOutReason reason = switch (state.valueOrNull) {
+    final AuthState? current = state.valueOrNull;
+
+    if (current case SignedIn(:final Session session)) {
+      // Blocks a concurrent `renew` from starting while this sign-out's
+      // keystore delete is in flight, reusing the same signal `renew`
+      // already checks so the two operations on a held session cannot
+      // overlap (`design-standards.md` §3). Renewals already in flight when
+      // this starts are handled separately, through `_signOutGeneration`.
+      state = AsyncData<AuthState>(SignedIn(session, renewing: true));
+    }
+    _signOutGeneration++;
+
+    final SignedOutReason reason = switch (current) {
       // Retrying a refused removal is not a second sign-out: the explanation
       // the operator is already reading stays.
       SignedOut(:final SignedOutReason reason) => reason,
@@ -127,6 +205,23 @@ class SessionController extends AsyncNotifier<AuthState> {
     };
     state = AsyncData<AuthState>(await _revoke(reason));
   }
+
+  /// The current [SignedOut.signingIn], or `false` when the state moved on
+  /// to something that does not carry the flag at all.
+  ///
+  /// Read fresh at commit time inside [_revoke] rather than captured once
+  /// before its await: a sign-in already in flight must stay guarded, so
+  /// [_revoke] must not reset this to the default — but a captured value
+  /// goes stale the moment that same sign-in resolves *during* [_revoke]'s
+  /// own keystore delete, clearing the flag itself. Reusing the captured
+  /// `true` would then write it back over a state where nothing is in
+  /// flight anymore, disabling sign-in with no request behind it and no
+  /// in-app recovery (`design-standards.md` §3, the council round-2
+  /// finding).
+  bool _currentSigningIn() => switch (state.valueOrNull) {
+    SignedOut(:final bool signingIn) => signingIn,
+    _ => false,
+  };
 
   /// Decides what a session read from storage means right now.
   Future<AuthState> _restore(Session session) async {
@@ -142,7 +237,10 @@ class SessionController extends AsyncNotifier<AuthState> {
     final AuthOutcome outcome = await ref
         .read(authGatewayProvider)
         .renew(session);
+    return _resolveRenewal(session, outcome);
+  }
 
+  Future<AuthState> _resolveRenewal(Session session, AuthOutcome outcome) {
     switch (outcome) {
       case AuthGranted(:final Session session):
         return _grant(session);
@@ -161,7 +259,7 @@ class SessionController extends AsyncNotifier<AuthState> {
         final bool worthRetrying =
             failure == AuthFailure.unreachable && session.isRenewableAt(now);
         if (stillUsable || worthRetrying) {
-          return SignedIn(session);
+          return Future<AuthState>.value(SignedIn(session));
         }
         return _revoke(SignedOutReason.renewalFailed);
     }
@@ -198,7 +296,11 @@ class SessionController extends AsyncNotifier<AuthState> {
   /// silently.
   Future<AuthState> _revoke(SignedOutReason reason) async {
     final bool removed = await _clearStoredSession();
-    return SignedOut(reason: reason, sessionMayRemainOnDevice: !removed);
+    return SignedOut(
+      reason: reason,
+      sessionMayRemainOnDevice: !removed,
+      signingIn: _currentSigningIn(),
+    );
   }
 
   /// Removes the stored session, reporting whether it is gone.

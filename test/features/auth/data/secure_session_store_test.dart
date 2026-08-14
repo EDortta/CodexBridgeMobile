@@ -111,4 +111,94 @@ void main() {
 
     await expectLater(store.clearSession(), completes);
   });
+
+  test(
+    'a session written after a refused removal survives the next read',
+    () async {
+      // The council round-2 pending-removal finding: `clearSession` marks
+      // the entry pending-removal when the platform delete is refused, and
+      // nothing but a later *successful* `clearSession` ever retired that
+      // marker. A fresh `writeSession` after the refusal — an ordinary
+      // sign-in-again, not a race — left the marker standing, so the session
+      // just written read back as null on every later launch.
+      final DeleteRefusingSecureKeyValueStore storage =
+          DeleteRefusingSecureKeyValueStore();
+      final SecureSessionStore store = SecureSessionStore(storage);
+      await store.writeSession(session);
+      await expectLater(store.clearSession(), throwsA(anything));
+
+      await store.writeSession(session);
+
+      expect(
+        await store.readSession(),
+        isNotNull,
+        reason:
+            'the fresh session was persisted but a stale pending-removal '
+            'marker from the refused removal hid it from every later read',
+      );
+    },
+  );
+
+  test(
+    'a marker cleared on write does not depend on a delete succeeding',
+    () async {
+      // Same finding, aimed at the mechanism rather than the outcome: on a
+      // keystore that refuses every delete, a marker retired via `delete`
+      // would fail exactly the way the original removal did. Clearing it
+      // must not need the one operation this keystore has already refused.
+      final DeleteRefusingSecureKeyValueStore storage =
+          DeleteRefusingSecureKeyValueStore();
+      final SecureSessionStore store = SecureSessionStore(storage);
+      await store.writeSession(session);
+      await expectLater(store.clearSession(), throwsA(anything));
+
+      await store.writeSession(session);
+
+      expect(
+        storage.entries['codex_bridge.session.pending_removal'],
+        isNot('true'),
+        reason: 'the marker was never actually cleared, only left unread',
+      );
+    },
+  );
+
+  test(
+    'writing a session for the first time does not grow a marker key',
+    () async {
+      // The fix must not run unconditionally: a device that never hit a
+      // refused removal must never see this key appear at all.
+      final InMemorySecureKeyValueStore storage = InMemorySecureKeyValueStore();
+
+      await SecureSessionStore(storage).writeSession(session);
+
+      expect(storage.entries.keys, <String>[SecureSessionStore.sessionKey]);
+    },
+  );
+
+  test(
+    'a successful retry clears the marker even when the marker\'s own '
+    'delete is refused the first time',
+    () async {
+      // The realistic recovery case: the session delete succeeds on retry,
+      // but a per-key-refusing keystore would refuse the *marker's* delete
+      // on its own first attempt — a delete-based cleanup would still lose
+      // the race even though the removal that mattered fully worked.
+      final DeleteRefusingOnceSecureKeyValueStore storage =
+          DeleteRefusingOnceSecureKeyValueStore();
+      final SecureSessionStore store = SecureSessionStore(storage);
+      await store.writeSession(session);
+      await expectLater(store.clearSession(), throwsA(anything));
+
+      await store.clearSession();
+      await store.writeSession(session);
+
+      expect(
+        await store.readSession(),
+        isNotNull,
+        reason:
+            'the retry actually removed the session and the marker should '
+            'have gone with it',
+      );
+    },
+  );
 }

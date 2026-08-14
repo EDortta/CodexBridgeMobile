@@ -11,6 +11,18 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../../../support/in_memory_secure_key_value_store.dart';
 
+/// Grants issued by the sequenced/blocking fakes below. A plain function
+/// rather than a field on each fake, so every reentrancy test builds its own
+/// distinguishable session without threading `now` through a constructor.
+Session _grantedSession(DateTime now, String accessToken) => Session(
+  accessToken: accessToken,
+  refreshToken: 'granted-refresh-token',
+  expiresAt: now.add(const Duration(hours: 1)),
+  refreshExpiresAt: now.add(const Duration(days: 7)),
+  operatorId: 'operator-1',
+  operatorName: 'Operator One',
+);
+
 /// Issue #22's lifecycle, end to end, against a fake gateway and a fake
 /// keystore: sign in, restore, renew, expire, sign out.
 ///
@@ -418,6 +430,116 @@ void main() {
         );
       },
     );
+
+    test(
+      'a sign-out taken while a sign-in is in flight keeps the guard closed',
+      () async {
+        // `signOut` is the "Remove from this device" retry and is
+        // deliberately reachable while a sign-in is in flight. Rebuilding
+        // `SignedOut` without carrying `signingIn` would reopen the guard
+        // above and reintroduce the exact race it closes, reached through
+        // the one caller that writes `SignedOut` without going through it.
+        final Completer<AuthOutcome> outcome = Completer<AuthOutcome>();
+        final _SequencedAuthGateway gateway = _SequencedAuthGateway(
+          <Completer<AuthOutcome>>[outcome],
+        );
+        final result = containerWith(gateway: gateway);
+        await stateOf(result.container);
+        final SessionController notifier = result.container.read(
+          sessionProvider.notifier,
+        );
+
+        final Future<void> signingIn = notifier.signIn('first-code');
+        await notifier.signOut();
+
+        expect(
+          (result.container.read(sessionProvider).value! as SignedOut)
+              .signingIn,
+          isTrue,
+          reason:
+              'signOut cleared signingIn while the sign-in it belongs to '
+              'was still in flight',
+        );
+
+        await notifier.signIn('second-code');
+
+        expect(
+          gateway.calls,
+          1,
+          reason:
+              'a second sign-in reached the gateway while the first was '
+              'still in flight',
+        );
+
+        outcome.complete(AuthGranted(_grantedSession(now, 'granted-access-token')));
+        await signingIn;
+
+        final AuthState state = result.container.read(sessionProvider).value!;
+        expect(state, isA<SignedIn>());
+        expect(
+          result.storage.entries[SecureSessionStore.sessionKey],
+          isNotNull,
+        );
+      },
+    );
+
+    test(
+      'a sign-in that resolves before the sign-out delete does is not '
+      'reopened stale',
+      () async {
+        // The mirror image of the test above: there, `signOut`'s write
+        // landed *before* the sign-in it belongs to resolved, and carrying
+        // `signingIn` through fixed it. Here the sign-in resolves *first* —
+        // clearing `signingIn` itself, correctly — while `signOut`'s own
+        // keystore delete is still in flight. `signOut` captured
+        // `signingIn: true` before that delete started and never re-reads
+        // it, so its late write puts the stale `true` back onto a state
+        // where nothing is in flight anymore: a spinner with no request
+        // behind it, and `signIn` guarded off forever with no in-app
+        // recovery (`design-standards.md` §3, the council round-2 finding).
+        final Completer<AuthOutcome> outcome = Completer<AuthOutcome>();
+        final _SequencedAuthGateway gateway = _SequencedAuthGateway(
+          <Completer<AuthOutcome>>[outcome],
+        );
+        final result = containerWith(
+          gateway: gateway,
+          keystore: BlockingDeleteSecureKeyValueStore.new,
+        );
+        await stateOf(result.container);
+        final SessionController notifier = result.container.read(
+          sessionProvider.notifier,
+        );
+        final BlockingDeleteSecureKeyValueStore storage =
+            result.storage as BlockingDeleteSecureKeyValueStore;
+
+        final Future<void> signingIn = notifier.signIn('a-code');
+        final Future<void> signingOut = notifier.signOut();
+
+        // The sign-in is refused before the sign-out's delete resolves.
+        outcome.complete(const AuthDenied(AuthFailure.rejectedCredential));
+        await signingIn;
+        expect(
+          (result.container.read(sessionProvider).value! as SignedOut)
+              .signingIn,
+          isFalse,
+          reason: "the sign-in's own write correctly cleared the flag",
+        );
+
+        storage.release();
+        await signingOut;
+
+        final SignedOut state =
+            result.container.read(sessionProvider).value! as SignedOut;
+        expect(
+          state.signingIn,
+          isFalse,
+          reason:
+              "signOut's late write put back a signingIn it captured "
+              'before its own await, over a sign-in that had already '
+              'finished and cleared it',
+        );
+      },
+    );
   });
 
   group('signing out', () {
@@ -625,6 +747,56 @@ void main() {
         reason: 'and the explanation the operator arrived with survives',
       );
     });
+
+    test(
+      'a refusal landing after a successful removal does not re-raise the leftover warning',
+      () async {
+        // The removal that failed on launch is retried by `signOut` while a
+        // sign-in is in flight, and this time it succeeds. `signIn`'s denial
+        // branch must report the device as it is *now*, not as it was when
+        // the call started.
+        final Completer<AuthOutcome> outcome = Completer<AuthOutcome>();
+        final _SequencedAuthGateway gateway = _SequencedAuthGateway(
+          <Completer<AuthOutcome>>[outcome],
+        );
+        final result = containerWith(
+          stored: sessionWith(
+            expiresIn: -const Duration(days: 8),
+            refreshExpiresIn: -const Duration(days: 1),
+          ),
+          gateway: gateway,
+          keystore: DeleteRefusingOnceSecureKeyValueStore.new,
+        );
+        final AuthState built = await stateOf(result.container);
+        expect((built as SignedOut).sessionMayRemainOnDevice, isTrue);
+        final SessionController notifier = result.container.read(
+          sessionProvider.notifier,
+        );
+
+        final Future<void> signingIn = notifier.signIn('wrong-code');
+        await notifier.signOut();
+
+        expect(
+          (result.container.read(sessionProvider).value! as SignedOut)
+              .sessionMayRemainOnDevice,
+          isFalse,
+          reason: 'the retry succeeded but the warning was not cleared',
+        );
+
+        outcome.complete(const AuthDenied(AuthFailure.rejectedCredential));
+        await signingIn;
+
+        final SignedOut state =
+            result.container.read(sessionProvider).value! as SignedOut;
+        expect(
+          state.sessionMayRemainOnDevice,
+          isFalse,
+          reason:
+              'a refusal that arrived after a successful removal re-raised '
+              'the leftover warning on a keystore that is now empty',
+        );
+      },
+    );
   });
 
   group('renewing on request', () {
@@ -662,6 +834,294 @@ void main() {
       expect(result.container.read(sessionProvider).value, isA<SignedOut>());
       expect(result.storage.entries, isEmpty);
     });
+
+    test(
+      'a second renewal cannot land while the first is still in flight',
+      () async {
+        // Same shape as sign-in's reentrancy guard: two calls entered close
+        // together both read `renewing: false` before either writes state
+        // unless the guard itself checks it, and both would carry the same
+        // old session into a second gateway request.
+        final Completer<AuthOutcome> outcome = Completer<AuthOutcome>();
+        final _SequencedRenewalGateway gateway = _SequencedRenewalGateway(
+          <Completer<AuthOutcome>>[outcome],
+        );
+        final result = containerWith(
+          stored: sessionWith(expiresIn: const Duration(hours: 1)),
+          gateway: gateway,
+        );
+        await stateOf(result.container);
+        final SessionController notifier = result.container.read(
+          sessionProvider.notifier,
+        );
+
+        final Future<void> first = notifier.renew();
+        final Future<void> second = notifier.renew();
+
+        outcome.complete(AuthGranted(_grantedSession(now, 'renewed-access-token')));
+        await first;
+        await second;
+
+        expect(
+          gateway.calls,
+          1,
+          reason: 'a second renewal reached the gateway while the first was '
+              'still in flight',
+        );
+        final SignedIn state =
+            result.container.read(sessionProvider).value! as SignedIn;
+        expect(state.session.accessToken, 'renewed-access-token');
+      },
+    );
+
+    test(
+      'a sign-out taken while a renewal is in flight is not undone',
+      () async {
+        final Completer<AuthOutcome> outcome = Completer<AuthOutcome>();
+        final _SequencedRenewalGateway gateway = _SequencedRenewalGateway(
+          <Completer<AuthOutcome>>[outcome],
+        );
+        final result = containerWith(
+          stored: sessionWith(expiresIn: const Duration(hours: 1)),
+          gateway: gateway,
+        );
+        await stateOf(result.container);
+        final SessionController notifier = result.container.read(
+          sessionProvider.notifier,
+        );
+
+        final Future<void> renewing = notifier.renew();
+        await notifier.signOut();
+
+        // The grant lands only after the sign-out has already committed.
+        outcome.complete(AuthGranted(_grantedSession(now, 'renewed-access-token')));
+        await renewing;
+
+        final AuthState state = result.container.read(sessionProvider).value!;
+        expect(
+          state,
+          isA<SignedOut>(),
+          reason:
+              'a renewal that landed after a sign-out resurrected the '
+              'session the operator had just removed',
+        );
+        expect(
+          result.storage.entries,
+          isEmpty,
+          reason:
+              'the late grant persisted a session the operator had just '
+              'removed',
+        );
+      },
+    );
+
+    test(
+      'a sign-out landing during the renewal persist is not undone',
+      () async {
+        // The council round-2 finding: the sign-out taken while a renewal is
+        // in flight is guarded at the gateway await (the test above), but
+        // `_resolveRenewal` has a *second* await — the persist inside
+        // `_grant` — and a sign-out landing there was never re-checked. The
+        // renewal's own write could land after the sign-out had already
+        // cleared the keystore, putting a token back that the operator had
+        // just watched disappear.
+        final _FakeAuthGateway gateway = _FakeAuthGateway();
+        final result = containerWith(
+          stored: sessionWith(expiresIn: const Duration(hours: 1)),
+          gateway: gateway,
+          keystore: BlockingWriteSecureKeyValueStore.new,
+        );
+        await stateOf(result.container);
+        final SessionController notifier = result.container.read(
+          sessionProvider.notifier,
+        );
+        final BlockingWriteSecureKeyValueStore storage =
+            result.storage as BlockingWriteSecureKeyValueStore;
+
+        final Future<void> renewing = notifier.renew();
+        // Let the renewal's gateway call resolve and its persist actually
+        // start before the sign-out lands, or the race being tested never
+        // happens.
+        await storage.writeStarted;
+        final Future<void> signingOut = notifier.signOut();
+        storage.release();
+        await renewing;
+        await signingOut;
+
+        final AuthState state = result.container.read(sessionProvider).value!;
+        expect(
+          state,
+          isA<SignedOut>(),
+          reason:
+              'a renewal whose persist landed after a sign-out resurrected '
+              'the session the operator had just removed',
+        );
+        expect(
+          result.storage.entries,
+          isEmpty,
+          reason:
+              'the renewal write landed after the sign-out cleared the '
+              'keystore, leaving a token behind that the operator was told '
+              'was gone',
+        );
+      },
+    );
+
+    test(
+      'a renewal cannot start while a sign-out delete is in flight',
+      () async {
+        final _FakeAuthGateway gateway = _FakeAuthGateway();
+        final result = containerWith(
+          stored: sessionWith(expiresIn: const Duration(hours: 1)),
+          gateway: gateway,
+          keystore: BlockingDeleteSecureKeyValueStore.new,
+        );
+        await stateOf(result.container);
+        final SessionController notifier = result.container.read(
+          sessionProvider.notifier,
+        );
+        final BlockingDeleteSecureKeyValueStore storage =
+            result.storage as BlockingDeleteSecureKeyValueStore;
+
+        final Future<void> signingOut = notifier.signOut();
+        await notifier.renew();
+
+        expect(
+          gateway.renewals,
+          0,
+          reason:
+              'a renewal reached the gateway while the sign-out delete was '
+              'still in flight',
+        );
+
+        storage.release();
+        await signingOut;
+
+        final SignedOut state =
+            result.container.read(sessionProvider).value! as SignedOut;
+        expect(state.reason, SignedOutReason.signedOut);
+      },
+    );
+  });
+
+  group('a relaunch after a refused removal', () {
+    test(
+      'does not restore the session the operator asked to remove',
+      () async {
+        final DeleteRefusingSecureKeyValueStore storage =
+            DeleteRefusingSecureKeyValueStore(<String, String>{
+              SecureSessionStore.sessionKey: sessionWith(
+                expiresIn: const Duration(hours: 1),
+              ).encode(),
+            });
+
+        final ProviderContainer first = ProviderContainer(
+          overrides: <Override>[
+            secureKeyValueStoreProvider.overrideWithValue(storage),
+            sessionClockProvider.overrideWithValue(() => now),
+            authGatewayProvider.overrideWithValue(_FakeAuthGateway()),
+          ],
+        );
+        addTearDown(first.dispose);
+        await first.read(sessionProvider.future);
+        await first.read(sessionProvider.notifier).signOut();
+        final SignedOut afterSignOut =
+            first.read(sessionProvider).value! as SignedOut;
+        expect(
+          afterSignOut.sessionMayRemainOnDevice,
+          isTrue,
+          reason: 'the fake refused the delete; the removal really failed',
+        );
+
+        // A relaunch is a new container over the same keystore.
+        final ProviderContainer second = ProviderContainer(
+          overrides: <Override>[
+            secureKeyValueStoreProvider.overrideWithValue(storage),
+            sessionClockProvider.overrideWithValue(() => now),
+            authGatewayProvider.overrideWithValue(_FakeAuthGateway()),
+          ],
+        );
+        addTearDown(second.dispose);
+
+        final AuthState relaunched = await second.read(sessionProvider.future);
+
+        expect(
+          relaunched,
+          isA<SignedOut>(),
+          reason:
+              'the operator signed out; the next launch restored the '
+              'session that could not be removed, with no trace of the '
+              'sign-out',
+        );
+      },
+    );
+
+    test(
+      'a sign-in that succeeds after a refused removal survives the next '
+      'launch',
+      () async {
+        // The council round-2 finding on the fix above: the pending-removal
+        // marker `clearSession` writes on a refused delete is retired only
+        // by a later *successful* `clearSession` — `writeSession` never
+        // touched it. An ordinary sign-in-again after the refused removal
+        // (no race, two plain taps) persisted a brand-new session under a
+        // marker nothing but a delete this keystore keeps refusing would
+        // ever clear, so the fresh sign-in was silently dropped on every
+        // later launch while its token stayed in the keystore, unread and
+        // unremovable (`design-standards.md` §3).
+        final DeleteRefusingSecureKeyValueStore storage =
+            DeleteRefusingSecureKeyValueStore(<String, String>{
+              SecureSessionStore.sessionKey: sessionWith(
+                expiresIn: const Duration(hours: 1),
+              ).encode(),
+            });
+
+        final ProviderContainer first = ProviderContainer(
+          overrides: <Override>[
+            secureKeyValueStoreProvider.overrideWithValue(storage),
+            sessionClockProvider.overrideWithValue(() => now),
+            authGatewayProvider.overrideWithValue(_FakeAuthGateway()),
+          ],
+        );
+        addTearDown(first.dispose);
+        await first.read(sessionProvider.future);
+        await first.read(sessionProvider.notifier).signOut();
+        expect(
+          (first.read(sessionProvider).value! as SignedOut)
+              .sessionMayRemainOnDevice,
+          isTrue,
+          reason: 'the fake refused the delete; the removal really failed',
+        );
+
+        await first.read(sessionProvider.notifier).signIn('good-code');
+        expect(
+          first.read(sessionProvider).value,
+          isA<SignedIn>(),
+          reason: 'the fresh sign-in was granted',
+        );
+
+        // A relaunch is a new container over the same keystore.
+        final ProviderContainer second = ProviderContainer(
+          overrides: <Override>[
+            secureKeyValueStoreProvider.overrideWithValue(storage),
+            sessionClockProvider.overrideWithValue(() => now),
+            authGatewayProvider.overrideWithValue(_FakeAuthGateway()),
+          ],
+        );
+        addTearDown(second.dispose);
+
+        final AuthState relaunched = await second.read(sessionProvider.future);
+
+        expect(
+          relaunched,
+          isA<SignedIn>(),
+          reason:
+              'the operator signed in successfully after the refused '
+              'removal; the next launch dropped that session on the floor '
+              'while its token stayed in the keystore',
+        );
+      },
+    );
   });
 }
 
@@ -678,11 +1138,40 @@ class _SequencedAuthGateway implements AuthGateway {
   final List<Completer<AuthOutcome>> _outcomes;
   int _calls = 0;
 
+  /// How many sign-ins actually reached the gateway — a call the guard
+  /// blocked never reaches [signIn] at all, so this is the direct evidence
+  /// that the guard held.
+  int get calls => _calls;
+
   @override
   Future<AuthOutcome> signIn(String accessCode) => _outcomes[_calls++].future;
 
   @override
   Future<AuthOutcome> renew(Session session) => throw UnimplementedError();
+}
+
+/// Gateway whose renewal replies resolve on the test's own schedule, one
+/// [Completer] per call in call order.
+///
+/// Built for `renew`'s reentrancy tests, the same reason
+/// [_SequencedAuthGateway] exists for `signIn`: a plain [_FakeAuthGateway]
+/// resolves synchronously, so an overlapping second call never actually lands
+/// while the first is still in flight and the race never shows up.
+class _SequencedRenewalGateway implements AuthGateway {
+  _SequencedRenewalGateway(this._outcomes);
+
+  final List<Completer<AuthOutcome>> _outcomes;
+  int _calls = 0;
+
+  /// How many renewals actually reached the gateway — a call the guard
+  /// blocked never reaches [renew] at all.
+  int get calls => _calls;
+
+  @override
+  Future<AuthOutcome> signIn(String accessCode) => throw UnimplementedError();
+
+  @override
+  Future<AuthOutcome> renew(Session session) => _outcomes[_calls++].future;
 }
 
 /// Gateway whose every outcome is chosen by the test.
