@@ -1,3 +1,4 @@
+import '../../../core/storage/secure_key_value_store.dart';
 import '../domain/server_config_store.dart';
 import '../domain/server_url.dart';
 
@@ -18,7 +19,7 @@ class SecureServerConfigStore implements ServerConfigStore {
 
   @override
   Future<ServerUrl?> readSelectedServer() async {
-    final String? stored = await _storage.read(selectedServerKey);
+    final String? stored = await _read();
     if (stored == null) {
       return null;
     }
@@ -32,6 +33,23 @@ class SecureServerConfigStore implements ServerConfigStore {
       ServerUrlAccepted(:final ServerUrl url) => url,
       ServerUrlRejected() => null,
     };
+  }
+
+  /// A keystore that cannot be read is a server that cannot be read.
+  ///
+  /// Mirrors [SecureSessionStore]'s own `_read`: the two features now share
+  /// one [SecureKeyValueStore], and a Keystore key lost to a backup restore
+  /// makes the plugin throw on *every* key it backs, not just the session's.
+  /// Without this, the session screen opens signed-out on that failure while
+  /// the server settings screen — reading through the very same store this
+  /// class was moved into `core/` to share — has no text field to recover
+  /// with, on every launch (`design-standards.md` §3).
+  Future<String?> _read() async {
+    try {
+      return await _storage.read(selectedServerKey);
+    } on Exception {
+      return null;
+    }
   }
 
   @override

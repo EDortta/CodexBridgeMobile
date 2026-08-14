@@ -34,5 +34,10 @@ abstract final class AppIcons {
   static const IconData account = Icons.person_outline_rounded;
   static const IconData decisions = Icons.rule_rounded;
   static const IconData server = Icons.dns_outlined;
+  static const IconData session = Icons.badge_outlined;
   static const IconData unreachable = Icons.error_outline_rounded;
+
+  /// The device could not do something the operator asked of it — distinct
+  /// from [unreachable], which is the *server* not answering.
+  static const IconData warning = Icons.warning_amber_rounded;
 }

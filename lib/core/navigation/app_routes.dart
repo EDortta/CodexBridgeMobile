@@ -17,10 +17,17 @@ abstract final class AppRoutes {
   /// Relative segment of the Codex Bridge server settings route.
   static const String serverSegment = 'server';
 
+  /// Relative segment of the sign-in and session route.
+  static const String sessionSegment = 'session';
+
   /// Server settings, nested inside Account: configuring the gateway is part of
   /// setting this device up, so it keeps the Account branch's navigation stack
   /// instead of becoming a destination of its own.
   static const String server = '$account/$serverSegment';
+
+  /// Sign-in and session, nested inside Account for the same reason as
+  /// [server]: linking this device to an account is part of setting it up.
+  static const String session = '$account/$sessionSegment';
 
   /// Absolute path of a destination's detail route.
   static String detailOf(String destinationPath) =>

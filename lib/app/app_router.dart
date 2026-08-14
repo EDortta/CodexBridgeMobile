@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/navigation/app_destinations.dart';
 import '../core/navigation/app_routes.dart';
 import '../features/account/presentation/account_screen.dart';
+import '../features/auth/presentation/session_screen.dart';
 import '../features/conversations/presentation/conversations_screen.dart';
 import '../features/decisions/presentation/decisions_screen.dart';
 import '../features/missions/presentation/work_screen.dart';
@@ -56,14 +57,21 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.projects}) {
                       builder: (BuildContext context, GoRouterState state) =>
                           DestinationDetailScreen(destination: destination),
                     ),
-                    // Server settings belong to one destination, not to all of
-                    // them, so it is registered on the Account branch only.
-                    if (destination == AppDestination.account)
+                    // Server settings and the session belong to one
+                    // destination, not to all of them, so they are registered
+                    // on the Account branch only.
+                    if (destination == AppDestination.account) ...<RouteBase>[
                       GoRoute(
                         path: AppRoutes.serverSegment,
                         builder: (BuildContext context, GoRouterState state) =>
                             const ServerSettingsScreen(),
                       ),
+                      GoRoute(
+                        path: AppRoutes.sessionSegment,
+                        builder: (BuildContext context, GoRouterState state) =>
+                            const SessionScreen(),
+                      ),
+                    ],
                   ],
                 ),
               ],

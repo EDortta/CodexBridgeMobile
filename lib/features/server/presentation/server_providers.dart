@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../data/flutter_secure_key_value_store.dart';
+import '../../../core/storage/secure_storage_providers.dart';
 import '../data/http_server_probe.dart';
 import '../data/secure_server_config_store.dart';
 import '../domain/server_config_store.dart';
@@ -33,9 +33,6 @@ class ServerSettings {
   /// A test is in flight.
   final bool testing;
 }
-
-final Provider<SecureKeyValueStore> secureKeyValueStoreProvider =
-    Provider<SecureKeyValueStore>((Ref ref) => const FlutterSecureKeyValueStore());
 
 final Provider<ServerConfigStore> serverConfigStoreProvider =
     Provider<ServerConfigStore>(

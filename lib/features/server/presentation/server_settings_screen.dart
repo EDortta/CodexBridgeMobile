@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/design/app_tokens.dart';
 import '../../../core/design/operational_text_theme.dart';
+import '../../../core/format/utc_moment.dart';
 import '../../../core/presentation/async_state_view.dart';
 import '../domain/server_certificate.dart';
 import '../domain/server_connection_report.dart';
@@ -240,18 +241,9 @@ class _ConnectionReportCard extends StatelessWidget {
     }
     return 'Subject: ${certificate.subject}\n'
         'Issuer: ${certificate.issuer}\n'
-        'Valid: ${_day(certificate.validFrom)} to ${_day(certificate.validTo)}';
+        'Valid: ${UtcMoment.day(certificate.validFrom)} to '
+        '${UtcMoment.day(certificate.validTo)}';
   }
-
-  /// Calendar day in UTC. Enough to spot an expired or not-yet-valid
-  /// certificate, and free of the device's locale and time zone, which would
-  /// otherwise make two operators read the same certificate differently.
-  static String _day(DateTime moment) {
-    final DateTime utc = moment.toUtc();
-    return '${utc.year}-${_pad(utc.month)}-${_pad(utc.day)} UTC';
-  }
-
-  static String _pad(int value) => value.toString().padLeft(2, '0');
 }
 
 class _ReportRow extends StatelessWidget {

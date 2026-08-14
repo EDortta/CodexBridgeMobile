@@ -28,14 +28,20 @@ class AccountScreen extends ConsumerWidget {
                 subtitle: Text(profile.session),
                 onTap: () => context.go(AppDestination.account.detailPath),
               ),
-              // Reached by path, not by importing the server feature: features
-              // are siblings and share through core/
+              // Reached by path, not by importing the server or auth feature:
+              // features are siblings and share through core/
               // (docs/architecture/state-architecture.md).
               ListTile(
                 leading: const Icon(AppIcons.server),
                 title: const Text('Codex Bridge server'),
                 subtitle: const Text('Configure and test the gateway'),
                 onTap: () => context.go(AppRoutes.server),
+              ),
+              ListTile(
+                leading: const Icon(AppIcons.session),
+                title: const Text('Session'),
+                subtitle: const Text('Sign in, renew, or sign out'),
+                onTap: () => context.go(AppRoutes.session),
               ),
             ],
           );
