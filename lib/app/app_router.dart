@@ -8,6 +8,7 @@ import '../features/conversations/presentation/conversations_screen.dart';
 import '../features/decisions/presentation/decisions_screen.dart';
 import '../features/missions/presentation/work_screen.dart';
 import '../features/projects/presentation/projects_screen.dart';
+import '../features/server/presentation/server_settings_screen.dart';
 import 'app_shell.dart';
 import 'destination_detail_screen.dart';
 
@@ -55,6 +56,14 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.projects}) {
                       builder: (BuildContext context, GoRouterState state) =>
                           DestinationDetailScreen(destination: destination),
                     ),
+                    // Server settings belong to one destination, not to all of
+                    // them, so it is registered on the Account branch only.
+                    if (destination == AppDestination.account)
+                      GoRoute(
+                        path: AppRoutes.serverSegment,
+                        builder: (BuildContext context, GoRouterState state) =>
+                            const ServerSettingsScreen(),
+                      ),
                   ],
                 ),
               ],
