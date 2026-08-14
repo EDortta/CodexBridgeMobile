@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:codex_bridge_mobile/core/storage/secure_storage_providers.dart';
 import 'package:codex_bridge_mobile/features/auth/data/secure_session_store.dart';
 import 'package:codex_bridge_mobile/features/auth/domain/auth_gateway.dart';
@@ -43,7 +45,7 @@ void main() {
   ({ProviderContainer container, InMemorySecureKeyValueStore storage})
   containerWith({
     Session? stored,
-    _FakeAuthGateway? gateway,
+    AuthGateway? gateway,
     DateTime? clock,
     InMemorySecureKeyValueStore Function(Map<String, String> seed)? keystore,
   }) {
@@ -356,6 +358,66 @@ void main() {
             'in the keystore',
       );
     });
+
+    test(
+      'a second sign-in cannot land while the first is still in flight',
+      () async {
+        // The guard that keeps `signIn` off `SignedIn` (above) only stops a
+        // second call once the first has landed. Two calls entered close
+        // together both read `SignedOut` before either writes state, so both
+        // proceed — and whichever gateway reply resolves last wins, even if
+        // it is a refusal arriving after the other call already granted and
+        // stored a session. `state.signingIn` was already there to disable
+        // the button; the fix is making the guard itself honor it.
+        final Completer<AuthOutcome> firstOutcome = Completer<AuthOutcome>();
+        final Completer<AuthOutcome> secondOutcome = Completer<AuthOutcome>();
+        final _SequencedAuthGateway gateway = _SequencedAuthGateway(
+          <Completer<AuthOutcome>>[firstOutcome, secondOutcome],
+        );
+        final result = containerWith(gateway: gateway);
+        await stateOf(result.container);
+        final SessionController notifier = result.container.read(
+          sessionProvider.notifier,
+        );
+
+        final Future<void> first = notifier.signIn('first-code');
+        final Future<void> second = notifier.signIn('second-code');
+
+        // The grant lands, and is fully persisted and shown, before the
+        // refusal for the other call is even produced.
+        firstOutcome.complete(
+          AuthGranted(
+            Session(
+              accessToken: 'granted-access-token',
+              refreshToken: 'granted-refresh-token',
+              expiresAt: now.add(const Duration(hours: 1)),
+              refreshExpiresAt: now.add(const Duration(days: 7)),
+              operatorId: 'operator-1',
+              operatorName: 'Operator One',
+            ),
+          ),
+        );
+        await first;
+        secondOutcome.complete(
+          const AuthDenied(AuthFailure.rejectedCredential),
+        );
+        await second;
+
+        final AuthState state = result.container.read(sessionProvider).value!;
+        expect(
+          state,
+          isA<SignedIn>(),
+          reason:
+              'a refusal that arrived after the grant overwrote the granted '
+              'session, reporting signed out while its token stayed in the '
+              'keystore',
+        );
+        expect(
+          result.storage.entries[SecureSessionStore.sessionKey],
+          isNotNull,
+        );
+      },
+    );
   });
 
   group('signing out', () {
@@ -601,6 +663,26 @@ void main() {
       expect(result.storage.entries, isEmpty);
     });
   });
+}
+
+/// Gateway whose sign-in replies resolve on the test's own schedule, one
+/// [Completer] per call in call order.
+///
+/// Built for `signIn`'s reentrancy test: a plain [_FakeAuthGateway] resolves
+/// synchronously, so two overlapping calls always finish in submission
+/// order and the race never shows up. Real network calls do not make that
+/// promise, and neither does this fake.
+class _SequencedAuthGateway implements AuthGateway {
+  _SequencedAuthGateway(this._outcomes);
+
+  final List<Completer<AuthOutcome>> _outcomes;
+  int _calls = 0;
+
+  @override
+  Future<AuthOutcome> signIn(String accessCode) => _outcomes[_calls++].future;
+
+  @override
+  Future<AuthOutcome> renew(Session session) => throw UnimplementedError();
 }
 
 /// Gateway whose every outcome is chosen by the test.

@@ -55,14 +55,20 @@ class SessionController extends AsyncNotifier<AuthState> {
   /// The code is passed straight to the gateway and never kept: it is not
   /// stored, not held in state, and not part of any message this app renders.
   ///
-  /// Only from [SignedOut], which is what keeps the invariant above total. A
-  /// sign-in over a held session would write `SignedOut` directly on a refusal
-  /// — reporting signed out while that session's token is still in the
-  /// keystore, the one disagreement [_revoke] exists to prevent.
+  /// Only from [SignedOut] with no sign-in already in flight, which is what
+  /// keeps the invariant above total. A sign-in over a held session would
+  /// write `SignedOut` directly on a refusal — reporting signed out while
+  /// that session's token is still in the keystore, the one disagreement
+  /// [_revoke] exists to prevent. A second call admitted while the first is
+  /// still awaiting the gateway is the same hole reached a different way: two
+  /// outcomes race to write `state`, and whichever resolves last wins even if
+  /// it is the refusal — so the guard excludes `signingIn: true` too, not just
+  /// [SignedIn].
   Future<void> signIn(String accessCode) async {
     if (state.valueOrNull case SignedOut(
       :final SignedOutReason reason,
       :final bool sessionMayRemainOnDevice,
+      signingIn: false,
     )) {
       // `sessionMayRemainOnDevice` is carried through both rebuilds below.
       // Rebuilding without it re-reports a clean device on a keystore that
