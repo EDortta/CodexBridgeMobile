@@ -33,4 +33,6 @@ abstract final class AppIcons {
   static const IconData conversations = Icons.forum_outlined;
   static const IconData account = Icons.person_outline_rounded;
   static const IconData decisions = Icons.rule_rounded;
+  static const IconData server = Icons.dns_outlined;
+  static const IconData unreachable = Icons.error_outline_rounded;
 }
