@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/design/app_tokens.dart';
 import '../core/navigation/app_destinations.dart';
+import '../features/missions/presentation/work_session_detail_screen.dart';
 
 /// Placeholder detail route nested inside a destination's own navigator.
 ///
@@ -14,7 +16,12 @@ class DestinationDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final String? sessionId = GoRouterState.of(context).uri.queryParameters['session'];
     final ThemeData theme = Theme.of(context);
+
+    if (destination == AppDestination.work && sessionId != null && sessionId.isNotEmpty) {
+      return WorkSessionDetailScreen(sessionId: sessionId);
+    }
 
     return Scaffold(
       appBar: AppBar(title: Text('${destination.label} detail')),
