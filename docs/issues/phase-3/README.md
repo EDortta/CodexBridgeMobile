@@ -12,7 +12,7 @@ corrected here and there.
 ## Issues
 
 - [#25 — Build decision inbox and filters](https://github.com/EDortta/CodexBridgeMobile/issues/25) — size M, **finished and closed**. Commit `6d65c1b`, merged `dda3992`. See `issues/25-build-decision-inbox-and-filters.md`.
-- [#26 — Implement decision detail and resolution flows](https://github.com/EDortta/CodexBridgeMobile/issues/26) — size L, **finished**. See `issues/26-decision-detail-and-resolution-flows.md`.
+- [#26 — Implement decision detail and resolution flows](https://github.com/EDortta/CodexBridgeMobile/issues/26) — size L, **finished and closed**. Commit `60c39c1`, merged `dac015d`. See `issues/26-decision-detail-and-resolution-flows.md`.
 
 ## External dependency: the backend API contract
 

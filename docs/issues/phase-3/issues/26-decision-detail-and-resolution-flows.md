@@ -1,6 +1,6 @@
 # #26 — Implement decision detail and resolution flows
 
-- status: [review]
+- status: [finished]
 - work_id: WK-20260819-gh-26-decision-detail-and-resolution-flows
 - public issue: https://github.com/EDortta/CodexBridgeMobile/issues/26
 - parent epic: https://github.com/EDortta/CodexBridgeMobile/issues/4
@@ -79,6 +79,6 @@ Run: `flutter analyze` (clean) and `flutter test` (260/260, 0 regressions
       `DecisionAuditEvent`.
 - [x] `flutter analyze` clean.
 - [x] Focused tests added and passing; full suite still green (260/260).
-- [ ] Operator review.
+- [x] Operator review (operator directed merge/push/close directly).
 - [ ] Council pass (optional — not run for this delivery, same as #23-#25).
-- [ ] Commit, merge to `development`, push, close #26 on GitHub.
+- [x] Commit, merge to `development` (`dac015d`), push, close #26 on GitHub.

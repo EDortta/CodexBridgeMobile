@@ -2,7 +2,7 @@
 
 - work_id: WK-20260819-gh-26-decision-detail-and-resolution-flows
 - date: 2026-08-19
-- status: #25 and #26 both finished; #26 implemented and tested, not yet merged/pushed/closed
+- status: #25 and #26 both finished, merged, pushed, and closed on GitHub
 
 ## Current state
 
@@ -144,10 +144,7 @@ council).
 
 ## Next Step (DO THIS FIRST)
 
-#26 is implemented and tested but not yet merged to `development`, pushed,
-or closed on GitHub — same review checkpoint #23/#24/#25 went through.
-Once directed: merge `--no-ff`, push, close #26 referencing the commit,
-update this file and the issue mirror file.
+#26 is done: merged to `development` (`dac015d`), pushed, closed on GitHub.
 
 Epic #4 has no further issues currently tracked beyond #25/#26 — the next
 work is either #46 (audit trail, Epic #14) if the operator wants the real
