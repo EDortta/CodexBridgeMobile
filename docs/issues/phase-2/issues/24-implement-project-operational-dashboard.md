@@ -1,6 +1,6 @@
 # #24 — Implement project operational dashboard
 
-- status: [review]
+- status: [finished]
 - work_id: WK-20260819-gh-24-project-operational-dashboard
 - public issue: https://github.com/EDortta/CodexBridgeMobile/issues/24
 - parent epic: https://github.com/EDortta/CodexBridgeMobile/issues/3
@@ -84,9 +84,9 @@ Run: `flutter analyze` (clean) and `flutter test` (211/211, no regressions).
       icon + muted relative-time text, never color alone.
 - [x] `flutter analyze` clean.
 - [x] Focused tests added and passing; full suite still green (211/211).
-- [ ] Operator review.
+- [x] Operator review (operator directed merge/push/close directly).
 - [ ] Council pass (optional — not run for this delivery, same as #23).
-- [ ] Commit, merge to `development`, push, close #24 on GitHub.
+- [x] Commit, merge to `development` (`c92a5ec`), push, close #24 on GitHub.
 
 Not validated: real Android Keystore path; on-device/emulator visual check
 (`flutter build apk --debug` blocked by a pre-existing environment NDK

@@ -2,7 +2,7 @@
 
 - work_id: WK-20260819-gh-24-project-operational-dashboard
 - date: 2026-08-19
-- status: #23 and #24 both finished; #24 implemented and tested, not yet merged/pushed/closed (awaiting operator direction, same as #23's flow)
+- status: #23 and #24 both finished, merged, pushed, and closed on GitHub
 
 ## Current state
 
@@ -104,13 +104,8 @@ Not validated:
 
 ## Next Step (DO THIS FIRST)
 
-#24 is implemented and tested but not yet merged to `development`, pushed,
-or closed on GitHub — same review checkpoint #23 went through. Once
-directed: merge `--no-ff` (`git merge --no-ff feature/gh-24/project-dashboard`),
-push, close #24 referencing the commit, update this file and
-`docs/issues/phase-2/issues/24-implement-project-operational-dashboard.md`.
-
-After that, Epic #3's remaining issues (#25 decision inbox/filters, #26
-decision detail, #29/#30 epics/issues browser, #35/#36 artifacts) are the
-natural next candidates — several are now unblocked by #24's new
+#24 is done: merged to `development` (`c92a5ec`), pushed, closed on GitHub.
+Epic #3's remaining issues (#25 decision inbox/filters, #26 decision detail,
+#29/#30 epics/issues browser, #35/#36 artifacts) are the natural next
+candidates — several are now less work thanks to #24's new
 `issues`/`artifacts` features and `Decision.projectId`.
