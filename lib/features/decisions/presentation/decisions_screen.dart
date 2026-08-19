@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/design/app_tokens.dart';
 import '../../../core/format/relative_moment.dart';
-import '../../../core/format/utc_moment.dart';
+import '../../../core/navigation/app_routes.dart';
 import '../../../core/presentation/async_state_view.dart';
 import '../domain/decision.dart';
 import '../domain/decision_risk.dart';
 import '../domain/decision_state.dart';
 import '../domain/decision_urgency.dart';
+import 'decision_badge.dart';
 import 'decision_filter.dart';
 import 'decision_providers.dart';
 
@@ -21,9 +23,10 @@ import 'decision_providers.dart';
 /// combine (`filterDecisions`), a critical decision visually distinct from
 /// a routine one (never by color alone — an explicit "Critical" label
 /// always accompanies the red border), and each card showing the request,
-/// impact and agent recommendation summary #25 asks for. Full context,
-/// evidence, discussion and the approve/reject/request-revision actions
-/// themselves are #26's job, not this screen's.
+/// impact and agent recommendation summary #25 asks for. A card's full
+/// context, evidence, discussion and the approve/reject/request-revision
+/// actions themselves live on `DecisionDetailScreen` (#26), reached by
+/// tapping a card.
 class DecisionsScreen extends ConsumerWidget {
   const DecisionsScreen({super.key});
 
@@ -281,10 +284,6 @@ class _DecisionCard extends StatelessWidget {
     final Color accent = isCritical
         ? theme.colorScheme.error
         : theme.colorScheme.outlineVariant;
-    final DecisionDeadlineFilter deadlineBucket = classifyDeadline(
-      decision.deadline,
-      now,
-    );
 
     return Opacity(
       // Resolved decisions are kept visible (state-filter history, #25) but
@@ -298,86 +297,68 @@ class _DecisionCard extends StatelessWidget {
             borderRadius: AppRadius.card,
           ),
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              if (isCritical)
-                Padding(
-                  padding: const EdgeInsets.only(bottom: AppSpacing.xs),
-                  child: Row(
-                    children: <Widget>[
-                      Icon(
-                        Icons.priority_high_rounded,
-                        size: 16,
-                        color: theme.colorScheme.error,
-                      ),
-                      const SizedBox(width: AppSpacing.xxs),
-                      Text(
-                        'Critical',
-                        style: theme.textTheme.labelLarge?.copyWith(
+        child: InkWell(
+          borderRadius: AppRadius.card,
+          onTap: () => context.go(
+            Uri(
+              path: AppRoutes.decisionDetail,
+              queryParameters: <String, String>{'decision': decision.id},
+            ).toString(),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.md),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                if (isCritical)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+                    child: Row(
+                      children: <Widget>[
+                        Icon(
+                          Icons.priority_high_rounded,
+                          size: 16,
                           color: theme.colorScheme.error,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: AppSpacing.xxs),
+                        Text(
+                          'Critical',
+                          style: theme.textTheme.labelLarge?.copyWith(
+                            color: theme.colorScheme.error,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                Text(decision.title, style: theme.textTheme.titleMedium),
+                const SizedBox(height: AppSpacing.xs),
+                Wrap(
+                  spacing: AppSpacing.sm,
+                  runSpacing: AppSpacing.xxs,
+                  children: <Widget>[
+                    DecisionBadge(icon: AppIcons.status, text: decision.state.label),
+                    DecisionBadge(
+                      icon: Icons.shield_outlined,
+                      text: decision.risk.label,
+                    ),
+                    DecisionBadge(
+                      icon: AppIcons.stale,
+                      text: describeDeadline(decision.deadline, now),
+                    ),
+                  ],
                 ),
-              Text(decision.title, style: theme.textTheme.titleMedium),
-              const SizedBox(height: AppSpacing.xs),
-              Wrap(
-                spacing: AppSpacing.sm,
-                runSpacing: AppSpacing.xxs,
-                children: <Widget>[
-                  _Badge(icon: AppIcons.status, text: decision.state.label),
-                  _Badge(icon: Icons.shield_outlined, text: decision.risk.label),
-                  _Badge(
-                    icon: AppIcons.stale,
-                    text: _deadlineLabel(deadlineBucket, decision.deadline),
-                  ),
-                ],
-              ),
-              const SizedBox(height: AppSpacing.sm),
-              Text(decision.impactSummary, style: theme.textTheme.bodyMedium),
-              const SizedBox(height: AppSpacing.xxs),
-              Text(
-                'Recommendation: ${decision.recommendationSummary}',
-                style: theme.textTheme.bodySmall,
-              ),
-            ],
+                const SizedBox(height: AppSpacing.sm),
+                Text(decision.impactSummary, style: theme.textTheme.bodyMedium),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  'Recommendation: ${decision.recommendationSummary}',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
-
-  String _deadlineLabel(DecisionDeadlineFilter bucket, DateTime deadline) {
-    return switch (bucket) {
-      DecisionDeadlineFilter.overdue =>
-        'Overdue (${UtcMoment.day(deadline)})',
-      DecisionDeadlineFilter.dueToday => 'Due today',
-      DecisionDeadlineFilter.dueThisWeek => 'Due this week',
-      DecisionDeadlineFilter.all => 'Due ${UtcMoment.day(deadline)}',
-    };
-  }
-}
-
-class _Badge extends StatelessWidget {
-  const _Badge({required this.icon, required this.text});
-
-  final IconData icon;
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        Icon(icon, size: 14, color: theme.colorScheme.outline),
-        const SizedBox(width: AppSpacing.xxs),
-        Text(text, style: theme.textTheme.labelMedium),
-      ],
     );
   }
 }

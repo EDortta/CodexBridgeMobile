@@ -155,4 +155,19 @@ void main() {
     );
     expect(pending.length, lessThan(all.length));
   });
+
+  test('decisionDetailProvider loads a single decision by id', () async {
+    final ProviderContainer container = ProviderContainer(
+      overrides: <Override>[
+        decisionRepositoryProvider.overrideWithValue(MockDecisionRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final Decision decision = await container.read(
+      decisionDetailProvider('shell-review').future,
+    );
+
+    expect(decision.id, 'shell-review');
+  });
 }

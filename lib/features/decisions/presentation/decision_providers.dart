@@ -17,6 +17,15 @@ final FutureProvider<List<Decision>> decisionsProvider =
       return ref.watch(decisionRepositoryProvider).loadDecisions();
     });
 
+/// A single decision, with its full context, discussion and audit trail —
+/// `autoDispose` because the detail screen is the only consumer and the
+/// data should not linger once the operator navigates away (mirrors
+/// `liveSessionDetailProvider`, `features/missions/`).
+final AutoDisposeFutureProviderFamily<Decision, String> decisionDetailProvider =
+    FutureProvider.autoDispose.family<Decision, String>((Ref ref, String id) async {
+      return ref.watch(decisionRepositoryProvider).loadDecision(id);
+    });
+
 /// Only [DecisionState.pending] decisions — what the project dashboard's
 /// (#24) pending-decisions section shows. Derived from [decisionsProvider]
 /// rather than a second repository call, the same shape

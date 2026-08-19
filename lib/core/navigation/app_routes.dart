@@ -32,4 +32,8 @@ abstract final class AppRoutes {
   /// Absolute path of a destination's detail route.
   static String detailOf(String destinationPath) =>
       '$destinationPath/$detailSegment';
+
+  /// A single decision's detail route (#26), nested under [decisions] the
+  /// same way every destination nests its own detail route.
+  static String get decisionDetail => detailOf(decisions);
 }

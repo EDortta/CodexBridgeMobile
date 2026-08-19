@@ -1,8 +1,8 @@
 # Phase 3 Resume
 
-- work_id: WK-20260819-gh-25-decision-inbox-and-filters
+- work_id: WK-20260819-gh-26-decision-detail-and-resolution-flows
 - date: 2026-08-19
-- status: #25 finished, merged (`dda3992`), pushed, and closed on GitHub; #26 not started
+- status: #25 and #26 both finished; #26 implemented and tested, not yet merged/pushed/closed
 
 ## Current state
 
@@ -67,12 +67,89 @@ Not validated:
   simplest widget that still satisfies "filters can be combined" (each axis
   narrows independently, AND-combined in `filterDecisions`).
 
+## #26 — Implement decision detail and resolution flows
+
+Branch `feature/gh-26/decision-detail-and-resolution-flows`.
+`DecisionDetailScreen` (`lib/features/decisions/presentation/`, fully
+self-contained — no cross-feature composition needed, unlike #24's
+dashboard) reached via `?decision=<id>` on a new `/decisions/detail` route
+(`AppRoutes.decisionDetail`, same query-param convention `?session=<id>`/
+`?project=<id>` already established). `_DecisionCard.onTap` (#25 left this
+unwired on purpose) now navigates there.
+
+`Decision` gained `context`, `riskDetails`, `evidence`, `affectedEntities`
+(all default to empty — `''`/`const []` — so #25's inbox-only fixtures
+still compile unchanged), `discussion` (`List<DecisionComment>`) and
+`auditTrail` (`List<DecisionAuditEvent>`), plus a `copyWith`.
+`DecisionRepository` gained `loadDecision`, `approve`, `reject`,
+`requestRevision`, `discuss` — the first **write-capable** repository
+interface in this app. `MockDecisionRepository` is now genuinely stateful
+(an in-memory `Map<String, Decision>`, mutated in place) rather than
+returning a fresh `Future.value(list)` every call, the same way a real
+backend would persist a resolution — the first mock repository here that
+needed this, since nothing earlier ever wrote through one. Its clock is
+injectable (`Clock` from `core/format/relative_moment.dart`) so audit
+timestamps are deterministic in tests.
+
+Rejection and request-revision both require a non-empty comment (thrown as
+`ArgumentError` from an `async` method, so it always surfaces through the
+returned `Future` — not synchronously out of the call, which the first
+version of this code got wrong and a test caught immediately). A critical
+decision's approve/reject/request-revision additionally requires an
+explicit, decision-and-action-specific acknowledgement checkbox before
+submit enables (`_ResolutionDialog`) — deliberately **not**
+`runSessionControlAction`'s plain Yes/No dialog (`features/missions/`),
+since Epic #4's own text rules out generic confirmation for critical
+actions. Discuss never requires the critical checkbox (it doesn't change
+`state`) but does require non-empty text.
+
+`flutter analyze`: clean. `flutter test`: 260/260 passing (25 new — 21
+decisions-feature tests plus 1 new `app_router_test.dart` case pinning
+inbox-card → detail navigation — 0 regressions; #24's dashboard tests, which
+read `Decision` through the unchanged `pendingDecisionsProvider` shape,
+still pass with no edits).
+
+Not validated: same as #25 (real Android Keystore path, on-device visual
+check blocked by the pre-existing NDK environment issue, no multi-round
+council).
+
+## Judgment calls made without a further operator round-trip (documented, not silently assumed)
+
+- **"All outcomes create an audit event" scoped to this feature only.**
+  `DecisionAuditEvent` records approve/reject/revision locally; the
+  cross-cutting, immutable, redacted audit *store* is #46's job (Epic #14,
+  not started) — see `README.md`'s dedicated section. Building #46 here
+  would have been out of scope for a size-L issue that already touches
+  domain model, repository, provider and two screens.
+- **"Discuss" never requires the critical-decision checkbox.** Only
+  approve/reject/request-revision change `state`; a comment thread is not
+  the "critical action" the epic worries about.
+- **Approve's comment is optional; reject's and request-revision's are
+  required.** The issue text only states rejection's requirement
+  explicitly ("Aprovar com comentário opcional" for approve, from the epic).
+  Request-revision's requirement is inferred: a revision request with
+  nothing to revise is not actionable — same reasoning discuss's
+  requirement uses.
+- **Critical-decision confirmation = a decision-and-action-specific
+  checkbox**, not a typed confirmation phrase or a second dialog step. A
+  checkbox is simpler to build and test than type-to-confirm while still
+  satisfying "not generic" — the checkbox label names the specific decision
+  title and the specific action, so it cannot be satisfied by a reflexive
+  tap the way a bare "Are you sure?" can.
+- **Actor is hardcoded to `'You'`.** No seam currently exposes the signed-in
+  operator's name to `decisions/` without a cross-feature import (auth's
+  `Session.operatorName` would require one); in the real backend, actor
+  identity comes from the auth token server-side anyway, so a mock actor
+  string is a reasonable stand-in, not a gap worth new architecture for.
+
 ## Next Step (DO THIS FIRST)
 
-#25 is done. **#26 — Implement decision detail and resolution flows**
-(size L) is next in Epic #4: show context, impact, risks, evidence,
-affected entities and discussion; implement approve, reject, request
-revision and discuss actions. Depends on #25's richer `Decision` model
-(already in place) and needs a real decision detail route (today, tapping
-an inbox card does nothing — #25 was explicitly scoped to list + filter,
-not per-item navigation, since #26 owns the detail screen).
+#26 is implemented and tested but not yet merged to `development`, pushed,
+or closed on GitHub — same review checkpoint #23/#24/#25 went through.
+Once directed: merge `--no-ff`, push, close #26 referencing the commit,
+update this file and the issue mirror file.
+
+Epic #4 has no further issues currently tracked beyond #25/#26 — the next
+work is either #46 (audit trail, Epic #14) if the operator wants the real
+cross-cutting store built now, or Epic #3's remaining issues (#29/#30
+epics/issues browser, #35/#36 artifacts).

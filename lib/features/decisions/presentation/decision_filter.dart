@@ -1,3 +1,5 @@
+import '../../../core/format/utc_moment.dart';
+
 /// The inbox's deadline filter (#25) — a UI-only bucketing of
 /// `Decision.deadline`, not a domain concept, so it lives in
 /// `presentation/` rather than `domain/`.
@@ -30,4 +32,15 @@ DecisionDeadlineFilter classifyDeadline(DateTime deadline, DateTime now) {
     return DecisionDeadlineFilter.dueThisWeek;
   }
   return DecisionDeadlineFilter.all;
+}
+
+/// A short label for [deadline]'s bucket — shared by the inbox card (#25)
+/// and the detail screen (#26) so both describe a deadline the same way.
+String describeDeadline(DateTime deadline, DateTime now) {
+  return switch (classifyDeadline(deadline, now)) {
+    DecisionDeadlineFilter.overdue => 'Overdue (${UtcMoment.day(deadline)})',
+    DecisionDeadlineFilter.dueToday => 'Due today',
+    DecisionDeadlineFilter.dueThisWeek => 'Due this week',
+    DecisionDeadlineFilter.all => 'Due ${UtcMoment.day(deadline)}',
+  };
 }
