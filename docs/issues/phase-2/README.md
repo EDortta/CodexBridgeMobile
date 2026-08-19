@@ -12,7 +12,7 @@ repository track an epic each rather than a strict chronological sequence.
 
 ## Issues
 
-- [#23 — Build projects list, search and filters](https://github.com/EDortta/CodexBridgeMobile/issues/23) — size M, **finished**. See `issues/23-build-projects-list-search-and-filters.md`.
+- [#23 — Build projects list, search and filters](https://github.com/EDortta/CodexBridgeMobile/issues/23) — size M, **finished and closed**. Commit `93b9c85`, merged `db69745`. See `issues/23-build-projects-list-search-and-filters.md`.
 - [#24 — Implement project operational dashboard](https://github.com/EDortta/CodexBridgeMobile/issues/24) — size L, not started.
 
 ## External dependency: the backend API contract

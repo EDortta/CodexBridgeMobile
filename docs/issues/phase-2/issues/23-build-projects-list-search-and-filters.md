@@ -1,6 +1,6 @@
 # #23 — Build projects list, search and filters
 
-- status: [review]
+- status: [finished]
 - work_id: WK-20260819-gh-23-projects-list-search-and-filters
 - public issue: https://github.com/EDortta/CodexBridgeMobile/issues/23
 - parent epic: https://github.com/EDortta/CodexBridgeMobile/issues/3
@@ -78,6 +78,6 @@ pre-existing suite — no regression).
       the project.
 - [x] `flutter analyze` clean.
 - [x] Focused tests added and passing; full suite still green.
-- [ ] Operator review.
+- [x] Operator review (operator directed merge/push/close directly).
 - [ ] Council pass (optional — not run for this delivery; see `RESUME.md`).
-- [ ] Commit, merge to `development`, push, close #23 on GitHub.
+- [x] Commit, merge to `development` (`db69745`), push, close #23 on GitHub.

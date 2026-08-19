@@ -2,7 +2,7 @@
 
 - work_id: WK-20260819-gh-23-projects-list-search-and-filters
 - date: 2026-08-19
-- status: #23 finished; #24 not started
+- status: #23 finished, merged (`db69745`), pushed, and closed on GitHub; #24 not started
 
 ## Current state
 
@@ -43,10 +43,7 @@ Revisit when #24 or a real `HttpProjectRepository` (blocked on CodexBridge
 
 ## Next Step (DO THIS FIRST)
 
-Operator reviews #23 (branch not yet merged). Once accepted: council pass
-(optional, operator's call), commit, merge to `development`, push, close
-#23 on GitHub referencing the commit, update this file.
-
-After that, **#24 — Implement project operational dashboard** (size L) is
-next in Epic #3, and depends on #23's `ProjectSummary`/health model existing,
-which it now does.
+#23 is done: merged to `development` (`db69745`), pushed, closed on GitHub.
+**#24 — Implement project operational dashboard** (size L) is next in
+Epic #3, and depends on #23's `ProjectSummary`/health model existing, which
+it now does.
