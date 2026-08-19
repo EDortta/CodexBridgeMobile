@@ -181,4 +181,26 @@ class _FakeDecisionRepository implements DecisionRepository {
 
   @override
   Future<List<Decision>> loadDecisions() => Future<List<Decision>>.value(decisions);
+
+  @override
+  Future<Decision> loadDecision(String decisionId) {
+    return Future<Decision>.value(
+      decisions.firstWhere((Decision d) => d.id == decisionId),
+    );
+  }
+
+  @override
+  Future<Decision> approve(String decisionId, {String? comment}) => loadDecision(decisionId);
+
+  @override
+  Future<Decision> reject(String decisionId, {required String justification}) =>
+      loadDecision(decisionId);
+
+  @override
+  Future<Decision> requestRevision(String decisionId, {required String comment}) =>
+      loadDecision(decisionId);
+
+  @override
+  Future<Decision> discuss(String decisionId, {required String comment}) =>
+      loadDecision(decisionId);
 }

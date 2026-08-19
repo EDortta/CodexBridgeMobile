@@ -7,6 +7,7 @@ import 'package:codex_bridge_mobile/app/app_router.dart';
 import 'package:codex_bridge_mobile/app/project_dashboard_screen.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_routes.dart';
+import 'package:codex_bridge_mobile/features/decisions/presentation/decision_detail_screen.dart';
 
 void main() {
   testWidgets('reaches the four primary destinations from the shell', (
@@ -108,6 +109,25 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(_appBarTitle(AppDestination.work.label), findsOneWidget);
+  });
+
+  testWidgets('tapping a decision card carries its id to the detail screen', (
+    WidgetTester tester,
+  ) async {
+    await _pumpApp(tester, initialLocation: AppDestination.work.path);
+
+    await tester.tap(find.byTooltip('Decisions'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Approve the navigation shell'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<DecisionDetailScreen>(find.byType(DecisionDetailScreen))
+          .decisionId,
+      'shell-review',
+    );
   });
 
   testWidgets('resolves a deep-link path to its destination, shell intact', (
