@@ -146,7 +146,16 @@ council).
 
 #26 is done: merged to `development` (`dac015d`), pushed, closed on GitHub.
 
-Epic #4 has no further issues currently tracked beyond #25/#26 — the next
-work is either #46 (audit trail, Epic #14) if the operator wants the real
-cross-cutting store built now, or Epic #3's remaining issues (#29/#30
-epics/issues browser, #35/#36 artifacts).
+Epic #4 has no further issues currently tracked beyond #25/#26.
+
+Correction (2026-08-19): the line this replaced said "#29/#30 epics/issues
+browser, #35/#36 artifacts" were "Epic #3's remaining issues" — wrong on two
+counts. Epic #3 (Projects and dashboard) is fully done: #23 and #24 were its
+only two issues, both closed. #29/#30 belong to **Epic #6** (Epics, Issues
+e planejamento); #35/#36 belong to **Epic #9** (Artefatos e visualização).
+Verified via `gh issue view <n> --json body` on all of #23/#24/#27-#40
+before picking the next issue — see `docs/issues/phase-4/RESUME.md` for
+what came next (**Epic #5**, Missions: #27/#28), chosen over #46 (audit
+trail, Epic #14) and Epic #6/#9 as the most appropriate next step —
+dependencies satisfied, natural epic order, and the same list+filters /
+detail+actions shape #25/#26 just proved out.
