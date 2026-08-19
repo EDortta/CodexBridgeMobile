@@ -40,4 +40,12 @@ abstract final class AppIcons {
   /// The device could not do something the operator asked of it — distinct
   /// from [unreachable], which is the *server* not answering.
   static const IconData warning = Icons.warning_amber_rounded;
+
+  static const IconData issues = Icons.flag_outlined;
+  static const IconData artifacts = Icons.inventory_2_outlined;
+  static const IconData activity = Icons.history_rounded;
+
+  /// Paired with relative-time text (`RelativeMoment`) wherever data is
+  /// marked stale — never color alone.
+  static const IconData stale = Icons.schedule_outlined;
 }

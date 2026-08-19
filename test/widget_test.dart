@@ -25,7 +25,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Codex Bridge Mobile'), findsOneWidget);
-    expect(find.text('Terminal móvel'), findsOneWidget);
+    // #24 tagged more than one mock mission with a projectId; every mission
+    // card carries this same badge, so more than one is now expected.
+    expect(find.text('Terminal móvel'), findsWidgets);
     expect(find.text('mobile-foundation'), findsOneWidget);
     expect(find.text('[ready] Local foundation active'), findsOneWidget);
   });
@@ -74,6 +76,7 @@ class _FakeMissionRepository implements MissionRepository {
     return Future<List<Mission>>.value(const <Mission>[
       Mission(
         id: 'injected-mission',
+        projectId: 'codex-bridge-mobile',
         title: 'Injected mission',
         status: 'Ready for review',
       ),

@@ -58,6 +58,15 @@ void main() {
       );
       await tester.pumpAndSettle();
 
+      // #24 tagged the mock missions with real projectIds, growing
+      // WorkScreen's mission list to 3 cards — enough to push the live
+      // sessions section beyond the ListView's initial build extent.
+      await tester.scrollUntilVisible(
+        find.text('Needs your approval'),
+        300,
+        scrollable: find.byType(Scrollable),
+      );
+
       expect(find.text('Needs your approval'), findsOneWidget);
     },
   );
