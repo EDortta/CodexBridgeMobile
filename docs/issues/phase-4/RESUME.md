@@ -76,18 +76,45 @@ real — that is the point at which a token earns its place, not before.
   against inventing infrastructure (tokens included) ahead of a real,
   repeated need.
 
+## Overnight run armed for #28 (and conditionally #29) — 2026-08-19
+
+A supervised, capped cloud routine (`RemoteTrigger`/claude.ai routines,
+`trig_01Mepr68impzTrGjDvzmnJRk`) is armed for tonight, `run_once_at`
+`2026-08-20T02:00:00Z` (23:00 America/Sao_Paulo), against
+`Agents/.docs/workflows/unattended-run.md`'s properties (operator-consented
+scope, hard ceilings, no-progress-is-fault, never merges/closes/deploys).
+It runs #28 in a fresh cloud sandbox (own git clone, does **not** touch this
+machine), and — only if #28 finishes cleanly (analyze clean, tests green,
+branch pushed, draft PR opened) — attempts **#29 — Build Epics and Issues
+browser** (Epic #6, pre-approved as the only allowed second issue) as a
+capped bonus. It never merges, never closes the GitHub issue, never touches
+`main`, never deploys. Idempotent: checks for an existing
+`feature/gh-N/...` branch or a closed issue before starting each one, so a
+duplicate fire does not redo work.
+
+**If you are resuming this project and see this note**: check
+`gh pr list -R EDortta/CodexBridgeMobile --state open` and
+`gh issue list -R EDortta/CodexBridgeMobile --state open --limit 5` first —
+#28 (and maybe #29) may already have a draft PR waiting for review before
+you start anything new. Query the routine's own run log for what actually
+happened: `RemoteTrigger` → `list_runs` → `get_run_log` on
+`trig_01Mepr68impzTrGjDvzmnJRk`.
+
 ## Next Step (DO THIS FIRST)
 
-#27 is done: merged to `development` (`f30cec5`), pushed, closed on GitHub.
-
-**#28 — Implement mission detail, timeline and controls** (size L) is next:
-show objective, stages, dependencies, timeline, tests, files, artifacts and
-related decisions; add pause, resume, cancel and explain controls. Expect
-the same shape #26 used for decisions — a detail screen reached via
-`?mission=<id>` on a new `/work/detail` variant (today `/work/detail`'s
-`DestinationDetailScreen` branch for `AppDestination.work` only recognizes
-`?session=<id>`; a mission id will need its own branch there, decided
-during #28, not here) — plus pause/resume/cancel needing the same
+Check the overnight run's outcome first (see above). If it produced a clean
+draft PR for #28: review and merge it through the normal flow (this repo's
+`--no-ff` merge to `development`, push, close the issue referencing the
+commit — same as #21-#27), then update this file. If it stopped without
+finishing #28 cleanly: read its final report (via `get_run_log`) for what
+blocked it, and pick the work up manually from there — **#28 — Implement
+mission detail, timeline and controls** (size L): show objective, stages,
+dependencies, timeline, tests, files, artifacts and related decisions; add
+pause, resume, cancel and explain controls. Expect the same shape #26 used
+for decisions — a detail screen reached via `?mission=<id>` on a new
+`/work/detail` variant (today `/work/detail`'s `DestinationDetailScreen`
+branch for `AppDestination.work` only recognizes `?session=<id>`; a mission
+id needs its own branch there) — plus pause/resume/cancel needing the same
 non-generic confirmation treatment #26 built for critical decisions, since
 Epic #5's own acceptance criteria echo the same "commands require
 confirmation appropriate to impact" language.

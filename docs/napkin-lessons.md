@@ -1,5 +1,21 @@
 # Napkin Lessons Learned
 
+- [2026-08-19] WK-20260819-gh-27-missions-list-and-lifecycle-model - Wrote
+  "Epic #3's remaining issues (#25 decision inbox/filters, #26 decision
+  detail, #29/#30 epics/issues browser, #35/#36 artifacts)" into
+  `phase-2/RESUME.md` from memory of the epic numbering, without checking.
+  All four were wrong: #25/#26 are Epic #4, #29/#30 are Epic #6, #35/#36 are
+  Epic #9 — and Epic #3 was already fully done (#23/#24 were its only two
+  issues). The mistake propagated once before being caught (had to be
+  corrected twice, in two different sessions/commits).
+- Action next time: Never state an issue's parent epic from memory or
+  pattern-matching on nearby issue numbers. Run
+  `gh issue view <n> --json body -q '.body'` (the body's first line is
+  always `Parent epic: #N`) for every issue before writing which epic it
+  belongs to, especially before picking "the next appropriate issue" — a
+  wrong epic assignment doesn't just mislabel a doc, it can pick the wrong
+  next issue entirely.
+
 - [2026-08-03] WK-20260803-gh-18-configure-primary-navigation - A test for
   "state survives a tab switch" passes just as happily against a shell that
   never preserved anything, because the widget is rebuilt either way.
