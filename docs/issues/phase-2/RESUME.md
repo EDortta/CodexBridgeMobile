@@ -105,7 +105,11 @@ Not validated:
 ## Next Step (DO THIS FIRST)
 
 #24 is done: merged to `development` (`c92a5ec`), pushed, closed on GitHub.
-Epic #3's remaining issues (#25 decision inbox/filters, #26 decision detail,
-#29/#30 epics/issues browser, #35/#36 artifacts) are the natural next
-candidates — several are now less work thanks to #24's new
-`issues`/`artifacts` features and `Decision.projectId`.
+Epic #3's own remaining issues (#29/#30 epics/issues browser, #35/#36
+artifacts) are natural next candidates — several are now less work thanks to
+#24's new `issues`/`artifacts` features.
+
+Correction (2026-08-19, during #25): the line this replaced mislabeled
+#25/#26 as "Epic #3's remaining issues" — they belong to **Epic #4**
+(Centro de Decisões), tracked from `docs/issues/phase-3/` onward. #25 is
+already done; see `docs/issues/phase-3/RESUME.md`.
