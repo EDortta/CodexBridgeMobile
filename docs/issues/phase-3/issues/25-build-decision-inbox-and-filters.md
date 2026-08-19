@@ -75,6 +75,6 @@ against the expanded `Decision` model and renamed repository method).
       each card shows request (title), impact and recommendation summary.
 - [x] `flutter analyze` clean.
 - [x] Focused tests added and passing; full suite still green (235/235).
-- [ ] Operator review.
+- [x] Operator review (operator directed merge/push/close directly).
 - [ ] Council pass (optional — not run for this delivery, same as #23/#24).
-- [ ] Commit, merge to `development`, push, close #25 on GitHub.
+- [x] Commit, merge to `development` (`dda3992`), push, close #25 on GitHub.

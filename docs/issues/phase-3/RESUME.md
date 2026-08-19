@@ -2,7 +2,7 @@
 
 - work_id: WK-20260819-gh-25-decision-inbox-and-filters
 - date: 2026-08-19
-- status: #25 finished; #26 not started
+- status: #25 finished, merged (`dda3992`), pushed, and closed on GitHub; #26 not started
 
 ## Current state
 

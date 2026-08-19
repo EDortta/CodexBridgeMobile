@@ -11,7 +11,7 @@ corrected here and there.
 
 ## Issues
 
-- [#25 — Build decision inbox and filters](https://github.com/EDortta/CodexBridgeMobile/issues/25) — size M, **finished**. See `issues/25-build-decision-inbox-and-filters.md`.
+- [#25 — Build decision inbox and filters](https://github.com/EDortta/CodexBridgeMobile/issues/25) — size M, **finished and closed**. Commit `6d65c1b`, merged `dda3992`. See `issues/25-build-decision-inbox-and-filters.md`.
 - [#26 — Implement decision detail and resolution flows](https://github.com/EDortta/CodexBridgeMobile/issues/26) — size L, not started.
 
 ## External dependency: the backend API contract
