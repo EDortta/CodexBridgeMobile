@@ -2,7 +2,7 @@
 
 - work_id: WK-20260819-gh-27-missions-list-and-lifecycle-model
 - date: 2026-08-19
-- status: #27 finished, not yet merged/pushed/closed; #28 not started
+- status: #27 finished, merged (`f30cec5`), pushed, and closed on GitHub; #28 not started
 
 ## Current state
 
@@ -78,10 +78,7 @@ real — that is the point at which a token earns its place, not before.
 
 ## Next Step (DO THIS FIRST)
 
-#27 is implemented and tested but not yet merged to `development`, pushed,
-or closed on GitHub — same review checkpoint #23-#26 went through. Once
-directed: merge `--no-ff`, push, close #27 referencing the commit, update
-this file and the issue mirror file.
+#27 is done: merged to `development` (`f30cec5`), pushed, closed on GitHub.
 
 **#28 — Implement mission detail, timeline and controls** (size L) is next:
 show objective, stages, dependencies, timeline, tests, files, artifacts and

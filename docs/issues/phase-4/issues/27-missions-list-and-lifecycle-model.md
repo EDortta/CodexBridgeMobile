@@ -1,6 +1,6 @@
 # #27 — Build missions list and lifecycle model
 
-- status: [review]
+- status: [finished]
 - work_id: WK-20260819-gh-27-missions-list-and-lifecycle-model
 - public issue: https://github.com/EDortta/CodexBridgeMobile/issues/27
 - parent epic: https://github.com/EDortta/CodexBridgeMobile/issues/5
@@ -72,6 +72,6 @@ in `test/widget_test.dart` and `test/app/project_dashboard_screen_test.dart`).
       which caught a hardcoded corner radius on first run — fixed by
       removing the clip rather than adding a one-off token).
 - [x] Focused tests added and passing; full suite still green (281/281).
-- [ ] Operator review.
+- [x] Operator review (operator directed merge/push/close directly).
 - [ ] Council pass (optional — not run for this delivery, same as #23-#26).
-- [ ] Commit, merge to `development`, push, close #27 on GitHub.
+- [x] Commit, merge to `development` (`f30cec5`), push, close #27 on GitHub.
