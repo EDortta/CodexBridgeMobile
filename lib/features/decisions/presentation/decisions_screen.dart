@@ -6,11 +6,12 @@ import '../../../core/design/app_tokens.dart';
 import '../../../core/format/relative_moment.dart';
 import '../../../core/navigation/app_routes.dart';
 import '../../../core/presentation/async_state_view.dart';
+import '../../../core/presentation/filter_menu_button.dart';
+import '../../../core/presentation/inline_badge.dart';
 import '../domain/decision.dart';
 import '../domain/decision_risk.dart';
 import '../domain/decision_state.dart';
 import '../domain/decision_urgency.dart';
-import 'decision_badge.dart';
 import 'decision_filter.dart';
 import 'decision_providers.dart';
 
@@ -85,7 +86,7 @@ class _DecisionInboxBody extends ConsumerWidget {
             spacing: AppSpacing.xs,
             runSpacing: AppSpacing.xs,
             children: <Widget>[
-              _FilterMenuButton<DecisionUrgency?>(
+              FilterMenuButton<DecisionUrgency?>(
                 key: const Key('decisionUrgencyFilter'),
                 icon: Icons.priority_high_rounded,
                 selected: urgency,
@@ -97,7 +98,7 @@ class _DecisionInboxBody extends ConsumerWidget {
                 onSelected: (DecisionUrgency? value) =>
                     ref.read(decisionUrgencyFilterProvider.notifier).state = value,
               ),
-              _FilterMenuButton<DecisionRisk?>(
+              FilterMenuButton<DecisionRisk?>(
                 key: const Key('decisionRiskFilter'),
                 icon: Icons.shield_outlined,
                 selected: risk,
@@ -106,7 +107,7 @@ class _DecisionInboxBody extends ConsumerWidget {
                 onSelected: (DecisionRisk? value) =>
                     ref.read(decisionRiskFilterProvider.notifier).state = value,
               ),
-              _FilterMenuButton<DecisionState?>(
+              FilterMenuButton<DecisionState?>(
                 key: const Key('decisionStateFilter'),
                 icon: AppIcons.status,
                 selected: state,
@@ -115,7 +116,7 @@ class _DecisionInboxBody extends ConsumerWidget {
                 onSelected: (DecisionState? value) =>
                     ref.read(decisionStateFilterProvider.notifier).state = value,
               ),
-              _FilterMenuButton<String?>(
+              FilterMenuButton<String?>(
                 key: const Key('decisionProjectFilter'),
                 icon: AppIcons.projects,
                 selected: projectId,
@@ -124,7 +125,7 @@ class _DecisionInboxBody extends ConsumerWidget {
                 onSelected: (String? value) =>
                     ref.read(decisionProjectFilterProvider.notifier).state = value,
               ),
-              _FilterMenuButton<DecisionDeadlineFilter>(
+              FilterMenuButton<DecisionDeadlineFilter>(
                 key: const Key('decisionDeadlineFilter'),
                 icon: AppIcons.stale,
                 selected: deadline,
@@ -214,61 +215,6 @@ class _EmptyDecisionsView extends ConsumerWidget {
   }
 }
 
-class _FilterMenuButton<T> extends StatelessWidget {
-  const _FilterMenuButton({
-    required this.icon,
-    required this.selected,
-    required this.options,
-    required this.labelOf,
-    required this.onSelected,
-    super.key,
-  });
-
-  final IconData icon;
-  final T selected;
-  final List<T> options;
-  final String Function(T) labelOf;
-  final ValueChanged<T> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
-    return PopupMenuButton<T>(
-      initialValue: selected,
-      onSelected: onSelected,
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<T>>[
-        for (final T option in options)
-          PopupMenuItem<T>(value: option, child: Text(labelOf(option))),
-      ],
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: AppSpacing.sm,
-          vertical: AppSpacing.xxs,
-        ),
-        decoration: ShapeDecoration(
-          shape: RoundedRectangleBorder(
-            side: BorderSide(color: theme.colorScheme.outlineVariant),
-            borderRadius: AppRadius.card,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(icon, size: 16, color: theme.colorScheme.primary),
-            const SizedBox(width: AppSpacing.xxs),
-            Text(labelOf(selected), style: theme.textTheme.labelMedium),
-            Icon(
-              Icons.arrow_drop_down_rounded,
-              size: 18,
-              color: theme.colorScheme.outline,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 class _DecisionCard extends StatelessWidget {
   const _DecisionCard({required this.decision, required this.now});
@@ -336,12 +282,12 @@ class _DecisionCard extends StatelessWidget {
                   spacing: AppSpacing.sm,
                   runSpacing: AppSpacing.xxs,
                   children: <Widget>[
-                    DecisionBadge(icon: AppIcons.status, text: decision.state.label),
-                    DecisionBadge(
+                    InlineBadge(icon: AppIcons.status, text: decision.state.label),
+                    InlineBadge(
                       icon: Icons.shield_outlined,
                       text: decision.risk.label,
                     ),
-                    DecisionBadge(
+                    InlineBadge(
                       icon: AppIcons.stale,
                       text: describeDeadline(decision.deadline, now),
                     ),

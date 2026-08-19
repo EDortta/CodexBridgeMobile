@@ -54,8 +54,9 @@ a toca. Use `- (none)` se genuinamente não houver nenhum.
 
 - `docs/project-rules.md` — regras específicas deste projeto (também na tabela acima)
 - `docs/product-foundation.md` — escopo e premissas canônicas do produto
-- `docs/issues/phase-3/README.md` — épico público **ativo** (Epic #4) e ordem de execução
-- `docs/issues/phase-2/README.md` — épico público **ativo** (Epic #3, #29/#30/#35/#36 restantes) e ordem de execução
+- `docs/issues/phase-4/README.md` — épico público **ativo** (Epic #5) e ordem de execução
+- `docs/issues/phase-3/README.md` — épico encerrado (Epic #4: #25/#26); mantido para consulta
+- `docs/issues/phase-2/README.md` — épico encerrado (Epic #3: #23/#24 eram suas únicas issues); mantido para consulta
 - `docs/issues/phase-1/README.md` — épico encerrado (Epic #2, e Epic #7 fora de ordem); mantido para consulta
 - `docs/issues/phase-0/README.md` — épico encerrado; mantido para consulta
 - `docs/napkin-lessons.md` — lições curtas; leia ao retomar trabalho relacionado
