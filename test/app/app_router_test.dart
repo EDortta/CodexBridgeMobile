@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:codex_bridge_mobile/app/app.dart';
 import 'package:codex_bridge_mobile/app/app_router.dart';
+import 'package:codex_bridge_mobile/app/project_dashboard_screen.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_routes.dart';
 
@@ -32,16 +33,16 @@ void main() {
 
     await tester.tap(find.text('Codex Bridge Mobile'));
     await tester.pumpAndSettle();
-    expect(find.text('Projects detail placeholder'), findsOneWidget);
+    expect(find.byType(ProjectDashboardScreen), findsOneWidget);
 
     await tester.tap(_navigationBarItem(AppDestination.work.label));
     await tester.pumpAndSettle();
-    expect(find.text('Projects detail placeholder'), findsNothing);
+    expect(find.byType(ProjectDashboardScreen), findsNothing);
 
     await tester.tap(_navigationBarItem(AppDestination.projects.label));
     await tester.pumpAndSettle();
     expect(
-      find.text('Projects detail placeholder'),
+      find.byType(ProjectDashboardScreen),
       findsOneWidget,
       reason: 'the Projects branch lost its stack while Work was on screen',
     );
@@ -54,12 +55,12 @@ void main() {
 
     await tester.tap(find.text('Codex Bridge Mobile'));
     await tester.pumpAndSettle();
-    expect(find.text('Projects detail placeholder'), findsOneWidget);
+    expect(find.byType(ProjectDashboardScreen), findsOneWidget);
 
     await tester.tap(_navigationBarItem(AppDestination.projects.label));
     await tester.pumpAndSettle();
 
-    expect(find.text('Projects detail placeholder'), findsNothing);
+    expect(find.byType(ProjectDashboardScreen), findsNothing);
     expect(_appBarTitle(AppDestination.projects.label), findsOneWidget);
   });
 
@@ -70,14 +71,28 @@ void main() {
 
     await tester.tap(find.text('Codex Bridge Mobile'));
     await tester.pumpAndSettle();
-    expect(find.text('Projects detail placeholder'), findsOneWidget);
+    expect(find.byType(ProjectDashboardScreen), findsOneWidget);
 
     await tester.pageBack();
     await tester.pumpAndSettle();
 
-    expect(find.text('Projects detail placeholder'), findsNothing);
+    expect(find.byType(ProjectDashboardScreen), findsNothing);
     expect(_appBarTitle(AppDestination.projects.label), findsOneWidget);
     expect(find.byType(NavigationBar), findsOneWidget);
+  });
+
+  testWidgets('tapping a project card carries its id to the dashboard', (
+    WidgetTester tester,
+  ) async {
+    await _pumpApp(tester);
+
+    await tester.tap(find.text('Codex Bridge Mobile'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<ProjectDashboardScreen>(find.byType(ProjectDashboardScreen)).projectId,
+      'codex-bridge-mobile',
+    );
   });
 
   testWidgets('pops Decisions back to the destination it was opened from', (

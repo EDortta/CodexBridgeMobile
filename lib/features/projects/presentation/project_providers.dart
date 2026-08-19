@@ -99,6 +99,29 @@ final Provider<AsyncValue<List<ProjectListItem>>> projectListProvider =
       ]);
     });
 
+/// A single project by id, derived from [projectsProvider]'s already-loaded
+/// list rather than a new repository method — `MockProjectRepository`
+/// always returns every record anyway. A future real `loadProject(id)` HTTP
+/// call can replace this provider's body without touching call sites, since
+/// its signature (`AsyncValue<ProjectSummary?>`, `null` meaning "not found")
+/// would not need to change.
+final ProviderFamily<AsyncValue<ProjectSummary?>, String> projectByIdProvider =
+    Provider.family<AsyncValue<ProjectSummary?>, String>((
+      Ref ref,
+      String id,
+    ) {
+      return ref
+          .watch(projectsProvider)
+          .whenData(
+            (List<ProjectSummary> list) => list
+                .cast<ProjectSummary?>()
+                .firstWhere(
+                  (ProjectSummary? p) => p!.id == id,
+                  orElse: () => null,
+                ),
+          );
+    });
+
 final StateProvider<String> projectSearchQueryProvider =
     StateProvider<String>((Ref ref) => '');
 

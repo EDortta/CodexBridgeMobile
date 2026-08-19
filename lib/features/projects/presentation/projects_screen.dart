@@ -7,6 +7,7 @@ import '../../../core/navigation/app_destinations.dart';
 import '../../../core/presentation/async_state_view.dart';
 import '../domain/project_health.dart';
 import 'project_filter.dart';
+import 'project_health_presentation.dart';
 import 'project_providers.dart';
 
 /// The Projects destination: search, favorites and health filters over the
@@ -232,22 +233,9 @@ class _ProjectCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final ProjectHealth health = item.summary.health;
-    final bool needsAttention =
-        health == ProjectHealth.unhealthy ||
-        health == ProjectHealth.pendingDecision;
-
-    final Color accent = switch (health) {
-      ProjectHealth.active => theme.colorScheme.outlineVariant,
-      ProjectHealth.unhealthy => theme.colorScheme.error,
-      ProjectHealth.pendingDecision => theme.colorScheme.tertiary,
-      ProjectHealth.offline => theme.colorScheme.outline,
-    };
-    final IconData healthIcon = switch (health) {
-      ProjectHealth.active => AppIcons.status,
-      ProjectHealth.unhealthy => Icons.error_rounded,
-      ProjectHealth.pendingDecision => AppIcons.decisions,
-      ProjectHealth.offline => AppIcons.unreachable,
-    };
+    final bool needsAttention = projectHealthNeedsAttention(health);
+    final Color accent = projectHealthAccent(theme, health);
+    final IconData healthIcon = projectHealthIcon(health);
 
     return Container(
       decoration: ShapeDecoration(
@@ -258,7 +246,12 @@ class _ProjectCard extends ConsumerWidget {
       ),
       child: InkWell(
         borderRadius: AppRadius.card,
-        onTap: () => context.go(AppDestination.projects.detailPath),
+        onTap: () => context.go(
+          Uri(
+            path: AppDestination.projects.detailPath,
+            queryParameters: <String, String>{'project': item.summary.id},
+          ).toString(),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Row(
