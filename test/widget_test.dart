@@ -9,6 +9,9 @@ import 'package:codex_bridge_mobile/core/design/operational_text_theme.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_repository.dart';
+import 'package:codex_bridge_mobile/features/missions/domain/mission_risk.dart';
+import 'package:codex_bridge_mobile/features/missions/domain/mission_stage.dart';
+import 'package:codex_bridge_mobile/features/missions/domain/mission_state.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/mission_providers.dart';
 
 void main() {
@@ -73,12 +76,19 @@ void main() {
 class _FakeMissionRepository implements MissionRepository {
   @override
   Future<List<Mission>> loadMissions() {
-    return Future<List<Mission>>.value(const <Mission>[
+    return Future<List<Mission>>.value(<Mission>[
       Mission(
         id: 'injected-mission',
         projectId: 'codex-bridge-mobile',
         title: 'Injected mission',
         status: 'Ready for review',
+        stage: MissionStage.implementation,
+        risk: MissionRisk.low,
+        state: MissionState.active,
+        owner: 'Claude',
+        progress: 0.5,
+        startedAt: DateTime.utc(2026, 8, 15, 9),
+        latestEvent: 'Injected for the test',
       ),
     ]);
   }

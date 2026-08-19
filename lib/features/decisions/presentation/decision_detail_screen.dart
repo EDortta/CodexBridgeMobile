@@ -5,13 +5,13 @@ import '../../../core/design/app_tokens.dart';
 import '../../../core/design/operational_text_theme.dart';
 import '../../../core/format/relative_moment.dart';
 import '../../../core/format/utc_moment.dart';
+import '../../../core/presentation/inline_badge.dart';
 import '../domain/decision.dart';
 import '../domain/decision_audit_event.dart';
 import '../domain/decision_comment.dart';
 import '../domain/decision_repository.dart';
 import '../domain/decision_state.dart';
 import '../domain/decision_urgency.dart';
-import 'decision_badge.dart';
 import 'decision_filter.dart';
 import 'decision_providers.dart';
 
@@ -146,9 +146,9 @@ class _SummaryCard extends StatelessWidget {
               spacing: AppSpacing.sm,
               runSpacing: AppSpacing.xxs,
               children: <Widget>[
-                DecisionBadge(icon: AppIcons.status, text: decision.state.label),
-                DecisionBadge(icon: Icons.shield_outlined, text: decision.risk.label),
-                DecisionBadge(
+                InlineBadge(icon: AppIcons.status, text: decision.state.label),
+                InlineBadge(icon: Icons.shield_outlined, text: decision.risk.label),
+                InlineBadge(
                   icon: AppIcons.stale,
                   text: describeDeadline(decision.deadline, now),
                 ),
