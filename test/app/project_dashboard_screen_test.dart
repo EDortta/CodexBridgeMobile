@@ -10,6 +10,7 @@ import 'package:codex_bridge_mobile/features/missions/domain/live_session_explan
 import 'package:codex_bridge_mobile/features/missions/domain/live_session_log_entry.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/live_session_providers.dart';
+import 'package:codex_bridge_mobile/features/missions/presentation/mission_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -144,6 +145,29 @@ void main() {
     expect(find.byType(AlertDialog), findsOneWidget);
     expect(find.text('Priority: Normal\nProject: codex-bridge-desktop'), findsOneWidget);
   });
+
+  testWidgets(
+    "tapping the current mission card opens that mission's own detail "
+    'screen, not just the general Work destination',
+    (WidgetTester tester) async {
+      await pumpDashboard(tester, 'codex-bridge-mobile');
+
+      // `find.text('Codex Bridge Mobile')` alone is ambiguous here: the
+      // project's own name and this mission's title are the same string
+      // (project `codex-bridge-mobile`, mission `mobile-foundation`), and
+      // the app bar renders the former. The mission card's `InkWell` is the
+      // one actually wrapping that text.
+      await tester.tap(find.widgetWithText(InkWell, 'Codex Bridge Mobile'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester
+            .widget<MissionDetailScreen>(find.byType(MissionDetailScreen))
+            .missionId,
+        'mobile-foundation',
+      );
+    },
+  );
 
   testWidgets('tapping a pending decision navigates to Decisions', (
     WidgetTester tester,

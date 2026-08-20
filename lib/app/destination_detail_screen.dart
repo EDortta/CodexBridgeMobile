@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 
 import '../core/design/app_tokens.dart';
 import '../core/navigation/app_destinations.dart';
+import '../features/missions/presentation/mission_detail_screen.dart';
 import '../features/missions/presentation/work_session_detail_screen.dart';
 import 'project_dashboard_screen.dart';
 
@@ -20,11 +21,15 @@ class DestinationDetailScreen extends StatelessWidget {
     final Map<String, String> queryParameters =
         GoRouterState.of(context).uri.queryParameters;
     final String? sessionId = queryParameters['session'];
+    final String? missionId = queryParameters['mission'];
     final String? projectId = queryParameters['project'];
     final ThemeData theme = Theme.of(context);
 
     if (destination == AppDestination.work && sessionId != null && sessionId.isNotEmpty) {
       return WorkSessionDetailScreen(sessionId: sessionId);
+    }
+    if (destination == AppDestination.work && missionId != null && missionId.isNotEmpty) {
+      return MissionDetailScreen(missionId: missionId);
     }
     if (destination == AppDestination.projects && projectId != null && projectId.isNotEmpty) {
       return ProjectDashboardScreen(projectId: projectId);

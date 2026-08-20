@@ -8,6 +8,7 @@ import 'package:codex_bridge_mobile/app/project_dashboard_screen.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_routes.dart';
 import 'package:codex_bridge_mobile/features/decisions/presentation/decision_detail_screen.dart';
+import 'package:codex_bridge_mobile/features/missions/presentation/mission_detail_screen.dart';
 
 void main() {
   testWidgets('reaches the four primary destinations from the shell', (
@@ -127,6 +128,22 @@ void main() {
           .widget<DecisionDetailScreen>(find.byType(DecisionDetailScreen))
           .decisionId,
       'shell-review',
+    );
+  });
+
+  testWidgets('tapping a mission card carries its id to the detail screen', (
+    WidgetTester tester,
+  ) async {
+    await _pumpApp(tester, initialLocation: AppDestination.work.path);
+
+    await tester.tap(find.text('Codex Bridge Mobile'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester
+          .widget<MissionDetailScreen>(find.byType(MissionDetailScreen))
+          .missionId,
+      'mobile-foundation',
     );
   });
 

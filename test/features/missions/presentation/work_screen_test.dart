@@ -192,6 +192,22 @@ class _FakeMissionRepository implements MissionRepository {
 
   @override
   Future<List<Mission>> loadMissions() => Future<List<Mission>>.value(missions);
+
+  @override
+  Future<Mission> loadMission(String missionId) async =>
+      missions.firstWhere((Mission m) => m.id == missionId);
+
+  @override
+  Future<Mission> pause(String missionId) async =>
+      missions.firstWhere((Mission m) => m.id == missionId);
+
+  @override
+  Future<Mission> resume(String missionId) async =>
+      missions.firstWhere((Mission m) => m.id == missionId);
+
+  @override
+  Future<Mission> cancel(String missionId, {required String reason}) async =>
+      missions.firstWhere((Mission m) => m.id == missionId);
 }
 
 class _FakeSessionsRepository implements LiveSessionRepository {

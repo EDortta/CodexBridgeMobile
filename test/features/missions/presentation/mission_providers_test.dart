@@ -1,8 +1,10 @@
+import 'package:codex_bridge_mobile/features/missions/data/mock_mission_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_risk.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_stage.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_state.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/mission_providers.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 void main() {
@@ -88,5 +90,20 @@ void main() {
       ),
       isEmpty,
     );
+  });
+
+  test('missionDetailProvider loads a single mission by id', () async {
+    final ProviderContainer container = ProviderContainer(
+      overrides: <Override>[
+        missionRepositoryProvider.overrideWithValue(MockMissionRepository()),
+      ],
+    );
+    addTearDown(container.dispose);
+
+    final Mission mission = await container.read(
+      missionDetailProvider('mobile-foundation').future,
+    );
+
+    expect(mission.id, 'mobile-foundation');
   });
 }
