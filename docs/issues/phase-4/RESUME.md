@@ -3,11 +3,12 @@
 - work_id: WK-20260820-gh-28-mission-detail-timeline-and-controls
 - date: 2026-08-20
 - status: #27 finished, merged (`f30cec5`), pushed, and closed on GitHub;
-  #28 finished on `feature/gh-28/mission-detail-timeline-and-controls`,
-  **reviewer pass + council round 1 both complete, all findings fixed and
-  tested**, committed locally, **not merged/pushed/closed — pending
-  operator review**; #29 not started (never reached — see "Overnight run
-  outcome" below)
+  #28 finished, reviewer pass + council round 1 both complete, all findings
+  fixed and tested, **merged `b0ac4a1` (`--no-ff`, 2026-08-20), pushed to
+  `origin/development`, closed on GitHub** (operator-approved, feature
+  branch deleted); #29 started 2026-08-20 (operator-authorized, after #28's
+  merge — see "Overnight run outcome" below for why it didn't start
+  earlier)
 
 ## Current state
 
@@ -232,16 +233,25 @@ race, just triggered directly rather than through two real taps.
 
 ## Next Step (DO THIS FIRST)
 
-**Operator review is next, not more implementation.** #28 — now with a
-real reviewer pass and a completed council round 1, both closed — is
-committed locally on `feature/gh-28/mission-detail-timeline-and-controls`
-but still not merged, pushed, or closed: this session's standing
-instructions require stopping before any of those regardless of review
-outcome. Review the diff and, if acceptable, direct the merge/push/close
-the same way #21-#27 were closed (`--no-ff` merge to `development`, push,
-close #28 on GitHub referencing the commit), then update this file.
-Separately: confirm whether the overnight routine
-(`trig_01Mepr68impzTrGjDvzmnJRk`) is still armed and worth relying on, or
-should be re-armed/rebuilt, before scheduling another unattended run. #29
-— Build Epics and Issues browser (Epic #6) is next in sequence once #28 is
-merged and the operator authorizes starting it.
+**#28 closed out, 2026-08-20**: operator reviewed and approved the merge
+directly (relayed through the orchestrating session in the same
+conversation) — `--no-ff` merge to `development` (`b0ac4a1`), `flutter
+analyze`/`flutter test` re-confirmed green (324/324) post-merge, pushed to
+`origin/development`, `feature/gh-28/...` deleted (`git branch -d`, refused
+if unmerged — was), issue #28 closed on GitHub with a comment referencing
+the merge commit. Cross-checked against the CodexBridge backend session in
+parallel: CodexBridge #7 (missions API) is now merged into the gateway's
+own `development` too (`16ce28e`) — see `README.md`'s updated "External
+dependency" section for the real contract shape and why `MockMissionRepository`
+still stands in.
+
+Operator then authorized starting **#29 — Build Epics and Issues browser
+(Epic #6)** in the same pattern as #28: own branch off `development`,
+reviewer.md + council.md self-review, commit locally, **no push** pending a
+separate operator confirmation. See this file's #29 section below for
+progress.
+
+Still open, not this session's to resolve: whether the overnight routine
+(`trig_01Mepr68impzTrGjDvzmnJRk`) is still armed — operator is checking
+`https://claude.ai/code/routines` directly; out of scope for any agent
+session per the operator's own instruction.
