@@ -1,5 +1,24 @@
 # Napkin Lessons Learned
 
+- [2026-08-20] WK-20260820-gh-28-mission-detail-timeline-and-controls - An
+  overnight cloud routine (`RemoteTrigger`, armed at the close of the #27
+  session for #28/#29) was checked the next session and had produced
+  nothing — no branch, no PR, no issue comment, well past its scheduled
+  fire time. The `RemoteTrigger` tool itself was not loadable in the
+  resuming session (`ToolSearch select:RemoteTrigger` found no match), so
+  the routine's own run log could not be read to learn why. The absence of
+  any artifact was still conclusive enough to act on without the log: no
+  branch/PR/comment means no work happened, regardless of cause.
+- Action next time: Do not treat "the routine was armed" as equivalent to
+  "the routine ran." A session that resumes after an armed unattended run
+  must check for concrete artifacts (branch, PR, issue comment) first, and
+  treat their total absence as sufficient grounds to fall back to manual
+  pickup — do not block on inspecting the run log if the tool that reads it
+  is unavailable in the resuming session; note the gap and move on. Also
+  worth an operator check outside any single session: confirm from
+  `https://claude.ai/code/routines` whether a routine that produced nothing
+  is still enabled, errored, or was silently disabled — a session with no
+  `RemoteTrigger` access cannot self-diagnose that.
 - [2026-08-19] WK-20260819-gh-27-missions-list-and-lifecycle-model - Wrote
   "Epic #3's remaining issues (#25 decision inbox/filters, #26 decision
   detail, #29/#30 epics/issues browser, #35/#36 artifacts)" into

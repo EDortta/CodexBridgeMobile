@@ -1,8 +1,11 @@
 # Phase 4 Resume
 
-- work_id: WK-20260819-gh-27-missions-list-and-lifecycle-model
-- date: 2026-08-19
-- status: #27 finished, merged (`f30cec5`), pushed, and closed on GitHub; #28 not started
+- work_id: WK-20260820-gh-28-mission-detail-timeline-and-controls
+- date: 2026-08-20
+- status: #27 finished, merged (`f30cec5`), pushed, and closed on GitHub;
+  #28 finished on `feature/gh-28/mission-detail-timeline-and-controls`,
+  committed locally, **not merged/pushed/closed — pending operator review**;
+  #29 not started (never reached — see "Overnight run outcome" below)
 
 ## Current state
 
@@ -76,45 +79,72 @@ real — that is the point at which a token earns its place, not before.
   against inventing infrastructure (tokens included) ahead of a real,
   repeated need.
 
-## Overnight run armed for #28 (and conditionally #29) — 2026-08-19
+## Overnight run outcome — 2026-08-20
 
-A supervised, capped cloud routine (`RemoteTrigger`/claude.ai routines,
-`trig_01Mepr68impzTrGjDvzmnJRk`) is armed for tonight, `run_once_at`
-`2026-08-20T02:00:00Z` (23:00 America/Sao_Paulo), against
-`Agents/.docs/workflows/unattended-run.md`'s properties (operator-consented
-scope, hard ceilings, no-progress-is-fault, never merges/closes/deploys).
-It runs #28 in a fresh cloud sandbox (own git clone, does **not** touch this
-machine), and — only if #28 finishes cleanly (analyze clean, tests green,
-branch pushed, draft PR opened) — attempts **#29 — Build Epics and Issues
-browser** (Epic #6, pre-approved as the only allowed second issue) as a
-capped bonus. It never merges, never closes the GitHub issue, never touches
-`main`, never deploys. Idempotent: checks for an existing
-`feature/gh-N/...` branch or a closed issue before starting each one, so a
-duplicate fire does not redo work.
+The routine armed at the close of the #27 session (`RemoteTrigger`,
+`trig_01Mepr68impzTrGjDvzmnJRk`, `run_once_at` `2026-08-20T02:00:00Z` =
+23:00 America/Sao_Paulo) **produced nothing**. At session start (well past
+the fire time): `gh pr list -R EDortta/CodexBridgeMobile --state open`
+returned no results, `gh issue view 28`/`29` both showed open with zero
+comments, and no `feature/gh-28/...` branch existed locally or on
+`origin` — `git log --oneline origin/development` topped out at the
+doc-only commit (`8376ea1`) that armed the routine last session. The
+`RemoteTrigger` tool itself was not available in *this* session — `ToolSearch
+select:RemoteTrigger` found no match, so `list_runs`/`get_run_log` could not
+be called to read the routine's own failure report. The absence of any
+branch, PR, or issue-comment artifact is conclusive on its own regardless:
+the routine did not deliver, whatever the underlying cause. Picked up #28
+manually per the operator's documented fallback instruction; #29 was never
+started (the operator's own cap was #28 mandatory, #29 only if a routine
+run finished #28 cleanly — no routine run happened, so #29's gate was never
+reached, and this session was not authorized to improvise past #28 alone).
 
-**If you are resuming this project and see this note**: check
-`gh pr list -R EDortta/CodexBridgeMobile --state open` and
-`gh issue list -R EDortta/CodexBridgeMobile --state open --limit 5` first —
-#28 (and maybe #29) may already have a draft PR waiting for review before
-you start anything new. Query the routine's own run log for what actually
-happened: `RemoteTrigger` → `list_runs` → `get_run_log` on
-`trig_01Mepr68impzTrGjDvzmnJRk`.
+**Open question for the operator**: is `trig_01Mepr68impzTrGjDvzmnJRk` still
+armed/enabled, and did it error out silently, get disabled, or never fire
+for an unrelated infra reason? This session had no tool access to check —
+worth confirming from `https://claude.ai/code/routines` directly before
+relying on a similar unattended run again.
+
+## #28 delivered manually — 2026-08-20
+
+Implemented on `feature/gh-28/mission-detail-timeline-and-controls`:
+`MissionDetailScreen` (objective, dependencies, tests/files/artifacts,
+related-decision links, timeline, and pause/resume/cancel/explain
+controls), plus the supporting domain additions
+(`MissionTimelineEvent`, `MissionControlAction`, `Mission`'s new fields and
+guards, `MissionRepository`'s `loadMission`/`pause`/`resume`/`cancel`).
+Full rationale, scope and test plan in
+`issues/28-implement-mission-detail-timeline-and-controls.md`.
+
+Cancel is the only control that confirms — always a required reason, plus
+an explicit acknowledgement checkbox naming the mission when
+`MissionRisk.high` — mirroring the escalation `DecisionDetailScreen` (#26)
+built for a critical decision rather than `runSessionControlAction`'s
+generic Yes/No. Pause/resume stay confirmation-free, matching
+`LiveSessionControlAction`'s own reversible pair. A blocked mission's cause
+is always rendered in text on the detail screen, never only implied by the
+state badge.
+
+`flutter analyze`: clean (the repo's design-token lint caught one hardcoded
+`EdgeInsets.only(bottom: 0)` on the first run — fixed by dropping the
+`last`-item special case, not by adding a token for a non-visual
+difference, same call #27 made for its own clip). `flutter test`: full
+suite green, 0 regressions.
+
+Not validated: same as #23-#27 (real Android Keystore path, on-device
+visual check blocked by the pre-existing NDK environment issue, no
+multi-round council).
 
 ## Next Step (DO THIS FIRST)
 
-Check the overnight run's outcome first (see above). If it produced a clean
-draft PR for #28: review and merge it through the normal flow (this repo's
-`--no-ff` merge to `development`, push, close the issue referencing the
-commit — same as #21-#27), then update this file. If it stopped without
-finishing #28 cleanly: read its final report (via `get_run_log`) for what
-blocked it, and pick the work up manually from there — **#28 — Implement
-mission detail, timeline and controls** (size L): show objective, stages,
-dependencies, timeline, tests, files, artifacts and related decisions; add
-pause, resume, cancel and explain controls. Expect the same shape #26 used
-for decisions — a detail screen reached via `?mission=<id>` on a new
-`/work/detail` variant (today `/work/detail`'s `DestinationDetailScreen`
-branch for `AppDestination.work` only recognizes `?session=<id>`; a mission
-id needs its own branch there) — plus pause/resume/cancel needing the same
-non-generic confirmation treatment #26 built for critical decisions, since
-Epic #5's own acceptance criteria echo the same "commands require
-confirmation appropriate to impact" language.
+**Operator review is next, not more implementation.** #28 is committed
+locally on `feature/gh-28/mission-detail-timeline-and-controls` but not
+merged, pushed, or closed — this session's standing instructions require
+stopping before any of those. Review the diff and, if acceptable, direct
+the merge/push/close the same way #21-#27 were closed
+(`--no-ff` merge to `development`, push, close #28 on GitHub referencing
+the commit), then update this file. Separately: confirm whether the
+overnight routine (`trig_01Mepr68impzTrGjDvzmnJRk`) is still armed and
+worth relying on, or should be re-armed/rebuilt, before scheduling another
+unattended run. #29 — Build Epics and Issues browser (Epic #6) is next in
+sequence once #28 is merged and the operator authorizes starting it.

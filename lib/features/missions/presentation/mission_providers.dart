@@ -15,6 +15,16 @@ final FutureProvider<List<Mission>> missionsProvider =
       return ref.watch(missionRepositoryProvider).loadMissions();
     });
 
+/// A single mission with its full detail — `autoDispose` because the detail
+/// screen (#28) is the only consumer and the data should not linger once the
+/// operator navigates away, the same reasoning `decisionDetailProvider`
+/// (`features/decisions/`) and `liveSessionDetailProvider`
+/// (`features/missions/`) already document.
+final AutoDisposeFutureProviderFamily<Mission, String> missionDetailProvider =
+    FutureProvider.autoDispose.family<Mission, String>((Ref ref, String id) async {
+      return ref.watch(missionRepositoryProvider).loadMission(id);
+    });
+
 final StateProvider<String?> missionProjectFilterProvider =
     StateProvider<String?>((Ref ref) => null);
 

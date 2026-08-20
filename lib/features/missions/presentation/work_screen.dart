@@ -285,7 +285,12 @@ class _MissionCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: AppRadius.card,
-        onTap: () => context.go(AppDestination.work.detailPath),
+        onTap: () => context.go(
+          Uri(
+            path: AppDestination.work.detailPath,
+            queryParameters: <String, String>{'mission': mission.id},
+          ).toString(),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.lg),
           child: Column(

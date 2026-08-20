@@ -74,22 +74,34 @@ void main() {
 }
 
 class _FakeMissionRepository implements MissionRepository {
+  final Mission _mission = Mission(
+    id: 'injected-mission',
+    projectId: 'codex-bridge-mobile',
+    title: 'Injected mission',
+    status: 'Ready for review',
+    stage: MissionStage.implementation,
+    risk: MissionRisk.low,
+    state: MissionState.active,
+    owner: 'Claude',
+    progress: 0.5,
+    startedAt: DateTime.utc(2026, 8, 15, 9),
+    latestEvent: 'Injected for the test',
+  );
+
   @override
   Future<List<Mission>> loadMissions() {
-    return Future<List<Mission>>.value(<Mission>[
-      Mission(
-        id: 'injected-mission',
-        projectId: 'codex-bridge-mobile',
-        title: 'Injected mission',
-        status: 'Ready for review',
-        stage: MissionStage.implementation,
-        risk: MissionRisk.low,
-        state: MissionState.active,
-        owner: 'Claude',
-        progress: 0.5,
-        startedAt: DateTime.utc(2026, 8, 15, 9),
-        latestEvent: 'Injected for the test',
-      ),
-    ]);
+    return Future<List<Mission>>.value(<Mission>[_mission]);
   }
+
+  @override
+  Future<Mission> loadMission(String missionId) async => _mission;
+
+  @override
+  Future<Mission> pause(String missionId) async => _mission;
+
+  @override
+  Future<Mission> resume(String missionId) async => _mission;
+
+  @override
+  Future<Mission> cancel(String missionId, {required String reason}) async => _mission;
 }
