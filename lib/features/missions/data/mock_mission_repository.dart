@@ -40,26 +40,24 @@ class MockMissionRepository implements MissionRepository {
 
   @override
   Future<Mission> pause(String missionId) async {
-    final Mission current = await loadMission(missionId);
-    if (!current.canPause) {
-      throw MissionControlNotAllowedException(
-        missionId,
-        'Only an active mission can be paused.',
-      );
-    }
-    return _transition(current, MissionState.paused, 'Paused by You');
+    return _applyGuarded(
+      missionId,
+      canApply: (Mission current) => current.canPause,
+      notAllowedMessage: 'Only an active mission can be paused.',
+      newState: MissionState.paused,
+      description: 'Paused by You',
+    );
   }
 
   @override
   Future<Mission> resume(String missionId) async {
-    final Mission current = await loadMission(missionId);
-    if (!current.canResume) {
-      throw MissionControlNotAllowedException(
-        missionId,
-        'Only a paused mission can be resumed.',
-      );
-    }
-    return _transition(current, MissionState.active, 'Resumed by You');
+    return _applyGuarded(
+      missionId,
+      canApply: (Mission current) => current.canResume,
+      notAllowedMessage: 'Only a paused mission can be resumed.',
+      newState: MissionState.active,
+      description: 'Resumed by You',
+    );
   }
 
   @override
@@ -67,14 +65,44 @@ class MockMissionRepository implements MissionRepository {
     if (reason.trim().isEmpty) {
       throw ArgumentError.value(reason, 'reason', 'A cancellation requires a reason.');
     }
-    final Mission current = await loadMission(missionId);
-    if (!current.canCancel) {
-      throw MissionControlNotAllowedException(
-        missionId,
-        'This mission cannot be cancelled from its current state.',
-      );
+    return _applyGuarded(
+      missionId,
+      canApply: (Mission current) => current.canCancel,
+      notAllowedMessage: 'This mission cannot be cancelled from its current state.',
+      newState: MissionState.cancelled,
+      description: 'Cancelled by You: ${reason.trim()}',
+    );
+  }
+
+  /// Reads [_missions], checks [canApply] and mutates in one **synchronous**
+  /// pass — no `await` sits between the read and the write.
+  ///
+  /// `pause`/`resume`/`cancel` used to do their guard check against a
+  /// `Mission` fetched through `await loadMission(missionId)`. That `await`
+  /// — even against an already-completed Future — still yields to the
+  /// microtask queue in Dart, so two calls issued back-to-back (a
+  /// double-tap, or two callers racing the same mission) could both read
+  /// the pre-mutation state, both pass the guard, and both call
+  /// `_transition` — the second silently overwriting the first's update in
+  /// `_missions` rather than being rejected by
+  /// [MissionControlNotAllowedException]. Guarding here, synchronously,
+  /// closes that window instead of trusting every call site to serialize
+  /// its own calls (`design-standards.md` §3).
+  Mission _applyGuarded(
+    String missionId, {
+    required bool Function(Mission current) canApply,
+    required String notAllowedMessage,
+    required MissionState newState,
+    required String description,
+  }) {
+    final Mission? current = _missions[missionId];
+    if (current == null) {
+      throw MissionNotFoundException(missionId);
     }
-    return _transition(current, MissionState.cancelled, 'Cancelled by You: ${reason.trim()}');
+    if (!canApply(current)) {
+      throw MissionControlNotAllowedException(missionId, notAllowedMessage);
+    }
+    return _transition(current, newState, description);
   }
 
   Mission _transition(Mission current, MissionState newState, String description) {

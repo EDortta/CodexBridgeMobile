@@ -130,12 +130,31 @@ class Mission {
   /// state always clears [blockedReason] — enforcing this class's own
   /// invariant that it is non-null only while blocked, rather than trusting
   /// every call site to remember to clear it.
+  ///
+  /// The other direction of that same invariant is enforced here too: a
+  /// transition *into* [MissionState.blocked] with no [blockedReason] (and
+  /// none already carried on this instance) throws, rather than silently
+  /// producing a blocked mission with no cause — which would defeat #28's
+  /// acceptance criterion ("blocked state includes cause") for whichever
+  /// caller wrote it. No call site in this repository does that today
+  /// (`MockMissionRepository._transition` never targets `blocked`); the
+  /// guard exists for the next one, per `design-standards.md` §3.
   Mission copyWith({
     MissionState? state,
     String? blockedReason,
     List<MissionTimelineEvent>? timeline,
   }) {
     final MissionState resolvedState = state ?? this.state;
+    final String? resolvedBlockedReason = resolvedState == MissionState.blocked
+        ? (blockedReason ?? this.blockedReason)
+        : null;
+    if (resolvedState == MissionState.blocked && resolvedBlockedReason == null) {
+      throw ArgumentError.value(
+        blockedReason,
+        'blockedReason',
+        'A transition into MissionState.blocked requires a reason.',
+      );
+    }
     return Mission(
       id: id,
       projectId: projectId,
@@ -148,9 +167,7 @@ class Mission {
       progress: progress,
       startedAt: startedAt,
       latestEvent: latestEvent,
-      blockedReason: resolvedState == MissionState.blocked
-          ? (blockedReason ?? this.blockedReason)
-          : null,
+      blockedReason: resolvedBlockedReason,
       objective: objective,
       dependencies: dependencies,
       timeline: timeline ?? this.timeline,

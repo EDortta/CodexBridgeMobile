@@ -106,6 +106,40 @@ void main() {
         throwsA(isA<MissionControlNotAllowedException>()),
       );
     });
+
+    test(
+      'two calls issued back-to-back do not race — the second sees the '
+      'already-paused state instead of silently overwriting the first',
+      () async {
+        final MockMissionRepository repository = MockMissionRepository(
+          clock: () => DateTime.utc(2026, 8, 20),
+        );
+
+        // Deliberately not awaited between the two calls: this is the
+        // "double tap before the button hides" / "two callers racing the
+        // same mission" shape — both requests are already in flight before
+        // either has a chance to observe the other's result. `pause()` has
+        // no internal `await`, so both run to completion synchronously,
+        // back to back — which is exactly why the second call's outcome is
+        // captured via `.then(onError:)` in the same synchronous step it is
+        // created in, rather than awaited later: an async function that
+        // rejects before its first `await` reports as an unhandled error at
+        // the call site if nothing has claimed it yet by the time this test
+        // body's own synchronous stretch ends.
+        final Future<Mission> first = repository.pause('mobile-foundation');
+        final Future<Object> secondOutcome = repository
+            .pause('mobile-foundation')
+            .then<Object>((Mission mission) => mission, onError: (Object error) => error);
+
+        final Mission firstResult = await first;
+        final Object secondResult = await secondOutcome;
+
+        expect(secondResult, isA<MissionControlNotAllowedException>());
+        final Mission reloaded = await repository.loadMission('mobile-foundation');
+        expect(reloaded.timeline.length, firstResult.timeline.length);
+        expect(reloaded.timeline.last.description, 'Paused by You');
+      },
+    );
   });
 
   group('resume', () {

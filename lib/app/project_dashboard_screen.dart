@@ -346,7 +346,17 @@ class _CurrentMissionCard extends ConsumerWidget {
           }
           return InkWell(
             borderRadius: AppRadius.card,
-            onTap: () => context.go(AppDestination.work.path),
+            // Carries `?mission=<id>` the same way `_MissionCard`
+            // (`work_screen.dart`, #28) does, so tapping the operator's
+            // current mission from the dashboard lands on that mission's
+            // own detail screen — not just the general Work destination,
+            // which would silently drop the mission this card was about.
+            onTap: () => context.go(
+              Uri(
+                path: AppDestination.work.detailPath,
+                queryParameters: <String, String>{'mission': mission.id},
+              ).toString(),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[

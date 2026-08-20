@@ -111,9 +111,25 @@ non-visual difference) and `flutter test` (full suite green, 0 regressions
       entry.
 - [x] `flutter analyze` clean.
 - [x] Focused tests added and passing; full suite green.
+- [x] Reviewer pass (`.docs/agents/reviewer.md`, retroactive, 2026-08-20):
+      NEEDS IMPROVEMENT -> APPROVED after 2 fixes (`Mission.copyWith`'s
+      missing blocked-without-reason guard; `MissionDetailScreen`'s
+      untested error branch). See `docs/issues/phase-4/RESUME.md`'s
+      "#28 retroactive reviewer + council pass" section for detail.
+- [x] Council pass (`.docs/agents/council.md`, retroactive, 2026-08-20,
+      round 1 only — every finding closed before a round 2 was needed): 2
+      findings under "the second caller" lens, both fixed with a failing-
+      before/passing-after test each (dashboard mission card missing its
+      `?mission=<id>` deep link; `MockMissionRepository`'s pause/resume/
+      cancel race). Sweep-skeptic and claim-auditor lenses returned no
+      finding. Full detail and the round tally in
+      `docs/issues/phase-4/RESUME.md`.
+- [x] `flutter analyze` clean, `flutter test` 324/324 (6 new since the
+      pre-review baseline of 318), 0 regressions — re-run after every fix.
 - [ ] Operator review (pending — this delivery was picked up because the
-      armed overnight routine produced nothing to review instead).
-- [ ] Council pass (optional — not run for this delivery, same as #23-#27).
+      armed overnight routine produced nothing to review instead; the
+      reviewer + council passes above are this session's own gates, not a
+      substitute for the operator's own review before merge).
 - [ ] Commit, merge to `development`, push, close #28 on GitHub — all
       operator-gated, not done by this session per the standing "stop
       before merge" instruction.

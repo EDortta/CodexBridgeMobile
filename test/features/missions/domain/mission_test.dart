@@ -166,5 +166,29 @@ void main() {
 
       expect(updated.state, MissionState.paused);
     });
+
+    test(
+      'moving into blocked with no reason and none carried over throws, '
+      'rather than silently producing a blocked mission with no cause',
+      () {
+        final Mission mission = missionWith(state: MissionState.active);
+
+        expect(
+          () => mission.copyWith(state: MissionState.blocked),
+          throwsArgumentError,
+        );
+      },
+    );
+
+    test('re-applying blocked with no new reason keeps the carried-over one', () {
+      final Mission mission = missionWith(
+        state: MissionState.blocked,
+        blockedReason: 'Still waiting on infra.',
+      );
+
+      final Mission updated = mission.copyWith(state: MissionState.blocked);
+
+      expect(updated.blockedReason, 'Still waiting on infra.');
+    });
   });
 }

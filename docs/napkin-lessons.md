@@ -1,5 +1,46 @@
 # Napkin Lessons Learned
 
+- [2026-08-20] WK-20260820-gh-28-mission-detail-timeline-and-controls
+  (retroactive reviewer + council pass) - #28 shipped in the previous
+  session's entry below with no review step at all — `council.md` is
+  explicit that it only runs on work `./reviewer.md` already approved, and
+  #28 had never been through that gate. Running `reviewer.md` first (not
+  skipping straight to council) surfaced two real findings the original
+  session missed: `Mission.copyWith` could silently produce a `blocked`
+  mission with no `blockedReason` (the class's own doc comment already
+  claimed the opposite direction of that invariant — auto-clear on exit —
+  without enforcing entry), and `MissionDetailScreen`'s not-found/generic
+  error branches had zero test coverage. Only after both were fixed and
+  green did the council round run, and it found something a straight
+  reviewer pass would plausibly not have looked for: `_CurrentMissionCard`
+  (#24's dashboard) still linked to the bare Work destination instead of
+  carrying `?mission=<id>` the way #28's own `_MissionCard` now does — a
+  second call site of the same "tap a mission summary -> see its detail"
+  mechanism, left behind. The council's other finding was a genuine
+  concurrency bug in `MockMissionRepository`: `pause`/`resume`/`cancel`
+  read the current mission via `await loadMission(...)`, and that `await` —
+  even against an already-resolved Future — still yields to the microtask
+  queue, so two calls issued back-to-back (no `await` between them) could
+  both observe the pre-mutation state, both "succeed", and the second would
+  silently overwrite the first's update. Reproducing it needed no real
+  concurrency, just two unawaited calls in the same test body — and finding
+  it needed no exotic tooling, just tracing the exact `await`
+  `design-standards.md` §2 already warns "clock/randomness/network arrive
+  through a parameter" is really about: an `await` that looks harmless
+  because the mock has no real latency is still a real yield point.
+- Action next time: When a delivery shipped without a review step (check
+  its own DoD checklist — an unchecked "Operator review"/"Council pass" box
+  is the tell), do not run the council directly against it even if asked
+  for "a council pass" in isolation — `council.md` itself says it is not a
+  second review, and running it on unapproved work just makes it a review
+  with extra ceremony. Run `reviewer.md` straight first, fix to APPROVED,
+  *then* council. Also: when a synchronous-looking mock method has any
+  `await` at all — even one that resolves instantly — do not assume it is
+  race-free; write the "two unawaited calls" test once per mutating method
+  that reads its own state back through an `await` before writing it, the
+  same way this session did for `pause` (and would extend to any future
+  mutating method built the same way).
+
 - [2026-08-20] WK-20260820-gh-28-mission-detail-timeline-and-controls - An
   overnight cloud routine (`RemoteTrigger`, armed at the close of the #27
   session for #28/#29) was checked the next session and had produced

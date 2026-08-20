@@ -4,8 +4,10 @@
 - date: 2026-08-20
 - status: #27 finished, merged (`f30cec5`), pushed, and closed on GitHub;
   #28 finished on `feature/gh-28/mission-detail-timeline-and-controls`,
-  committed locally, **not merged/pushed/closed — pending operator review**;
-  #29 not started (never reached — see "Overnight run outcome" below)
+  **reviewer pass + council round 1 both complete, all findings fixed and
+  tested**, committed locally, **not merged/pushed/closed — pending
+  operator review**; #29 not started (never reached — see "Overnight run
+  outcome" below)
 
 ## Current state
 
@@ -132,19 +134,114 @@ difference, same call #27 made for its own clip). `flutter test`: full
 suite green, 0 regressions.
 
 Not validated: same as #23-#27 (real Android Keystore path, on-device
-visual check blocked by the pre-existing NDK environment issue, no
-multi-round council).
+visual check blocked by the pre-existing NDK environment issue).
+
+## #28 retroactive reviewer + council pass — 2026-08-20 (later same day)
+
+The operator asked for the same rigor #23-#27 never got (unlike
+CodexBridge's #17, which went through a reviewer pass, a council round 1
+close, and a council round 2 close). `.docs/agents/reviewer.md` and
+`.docs/agents/council.md` were run for real against
+`feature/gh-28/mission-detail-timeline-and-controls`, in the order
+`council.md` requires: reviewer first, council only on the approved result.
+
+**Reviewer pass** (`reviewer.md`, straight, against the full branch diff)
+— NEEDS IMPROVEMENT, two findings, both fixed:
+- `Mission.copyWith` could move a mission into `MissionState.blocked` with
+  no `blockedReason` (silently, if `state` is passed with no reason and
+  none was already carried) — defeating the acceptance criterion "blocked
+  state includes cause" for whatever future call site did that. No call
+  site in this delivery triggers it (`MockMissionRepository._transition`
+  never targets `blocked`), but the class's own doc comment already claims
+  the inverse invariant (auto-clear on exit) without enforcing entry. Fixed:
+  `copyWith` now throws `ArgumentError` on that transition
+  (`lib/features/missions/domain/mission.dart`); tests in
+  `test/features/missions/domain/mission_test.dart` (`copyWith` group).
+- `MissionDetailScreen`'s `_errorMessage` switch (not-found vs. generic
+  fallback) had zero test coverage — both arms untested. Fixed: two widget
+  tests added to `mission_detail_screen_test.dart` (unknown id, and a
+  `_FailingMissionRepository` fake for the generic-fallback arm).
+
+After both fixes: `flutter analyze` clean, `flutter test` 322/322 (4 new,
+0 regressions).
+
+**Council pass** (`council.md`, default 3 lenses — sweep skeptic, claim
+auditor, second caller — against the reviewer-approved diff; `docs/software-
+overview.md` has no literally-named "Target Project Checklist" section, so
+lens selection used its actual Product/Users/Constraints content instead;
+noted rather than guessed past silently):
+
+- **Sweep skeptic** — no finding. This delivery is new feature work, not a
+  mechanical sweep/rename; the lens's own precedent does not apply here.
+- **Claim auditor** — no finding. Every coverage/behavior claim in the
+  issue doc and this file's own #28 section was checked against a real test
+  file or a real `flutter analyze`/`flutter test` run; nothing was claimed
+  that the diff does not back.
+- **Second caller** — **2 findings, both survived §2, both fixed**:
+  1. *Trigger*: on the Project Dashboard (#24), a project with an active
+     mission — tap the "Current mission" card. *Wrong outcome*: lands on
+     the general Work destination with no mission selected, instead of that
+     mission's own detail screen — the exact deep-link `_MissionCard`
+     (`work_screen.dart`, #28) established for the same gesture. *Where*:
+     `lib/app/project_dashboard_screen.dart`, `_CurrentMissionCard.onTap`.
+     *Evidence*: reproduced with a widget test that failed before the fix
+     (`test/app/project_dashboard_screen_test.dart`, "tapping the current
+     mission card…") — confirmed fail-without/pass-with by temporarily
+     reverting the fix and re-running. Fixed: `onTap` now carries
+     `?mission=<id>` the same way `_MissionCard` does.
+  2. *Trigger*: two `pause`/`resume`/`cancel` calls for the same mission
+     issued back-to-back (a double-tap before the button hides, or two
+     callers racing the same mission) — both read `MockMissionRepository`'s
+     pre-mutation state via `await loadMission`, since that `await` still
+     yields to the microtask queue even against an already-completed
+     Future. *Wrong outcome*: both calls "succeed" (no
+     `MissionControlNotAllowedException`), and the second silently
+     overwrites the first's mutation in `_missions` — a lost update, plus a
+     duplicate timeline-event id, with no error surfaced anywhere. *Where*:
+     `lib/features/missions/data/mock_mission_repository.dart`, `pause`/
+     `resume`/`cancel`. *Evidence*: reproduced with a repository test
+     issuing two unawaited `pause()` calls (`mock_mission_repository_test.dart`,
+     "two calls issued back-to-back do not race…") — confirmed
+     fail-without/pass-with the same way. Fixed: the guard check and the
+     mutation now happen in one synchronous pass (`_applyGuarded`), closing
+     the window instead of trusting every caller to serialize its own
+     calls (`design-standards.md` §3).
+
+Only one round was needed — every finding was fixed and its fix verified
+before a round 2 would have been reached, so no finding stayed open past
+round 1 and `governance-precedence.md` was never entered (no
+member-vs-member disagreement arose either). After all four fixes (2
+reviewer + 2 council): `flutter analyze` clean, `flutter test` 324/324 (6
+new since the pre-review baseline, 0 regressions).
+
+Round record (council.md §4's mandatory tally): reviewer findings raised 2,
+survived 2, fixed 2, tests added 2. Council findings raised 2 (both under
+"the second caller"), survived 2, fixed 2, tests added 2. Questions left
+open: 0. No `governancekit --root . council --record` run — this project's
+GovernanceKit machine-readable gate was not available in this session; the
+record above is the manual equivalent `council.md` asks for when the
+runtime tool is not present.
+
+Not validated: same as #23-#27 (real Android Keystore path, on-device
+visual check blocked by the pre-existing NDK environment issue). The
+double-tap/race fix is validated at the repository layer (a fast,
+deterministic unit test); a real gesture-level double-tap through the
+actual `_ActionsCard` buttons was not separately reproduced with Flutter's
+tap-timing APIs — the repository-level reproduction is the same underlying
+race, just triggered directly rather than through two real taps.
 
 ## Next Step (DO THIS FIRST)
 
-**Operator review is next, not more implementation.** #28 is committed
-locally on `feature/gh-28/mission-detail-timeline-and-controls` but not
-merged, pushed, or closed — this session's standing instructions require
-stopping before any of those. Review the diff and, if acceptable, direct
-the merge/push/close the same way #21-#27 were closed
-(`--no-ff` merge to `development`, push, close #28 on GitHub referencing
-the commit), then update this file. Separately: confirm whether the
-overnight routine (`trig_01Mepr68impzTrGjDvzmnJRk`) is still armed and
-worth relying on, or should be re-armed/rebuilt, before scheduling another
-unattended run. #29 — Build Epics and Issues browser (Epic #6) is next in
-sequence once #28 is merged and the operator authorizes starting it.
+**Operator review is next, not more implementation.** #28 — now with a
+real reviewer pass and a completed council round 1, both closed — is
+committed locally on `feature/gh-28/mission-detail-timeline-and-controls`
+but still not merged, pushed, or closed: this session's standing
+instructions require stopping before any of those regardless of review
+outcome. Review the diff and, if acceptable, direct the merge/push/close
+the same way #21-#27 were closed (`--no-ff` merge to `development`, push,
+close #28 on GitHub referencing the commit), then update this file.
+Separately: confirm whether the overnight routine
+(`trig_01Mepr68impzTrGjDvzmnJRk`) is still armed and worth relying on, or
+should be re-armed/rebuilt, before scheduling another unattended run. #29
+— Build Epics and Issues browser (Epic #6) is next in sequence once #28 is
+merged and the operator authorizes starting it.

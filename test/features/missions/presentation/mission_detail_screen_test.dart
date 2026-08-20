@@ -1,6 +1,8 @@
 import 'package:codex_bridge_mobile/core/design/app_theme.dart';
 import 'package:codex_bridge_mobile/core/format/relative_moment.dart';
 import 'package:codex_bridge_mobile/features/missions/data/mock_mission_repository.dart';
+import 'package:codex_bridge_mobile/features/missions/domain/mission.dart';
+import 'package:codex_bridge_mobile/features/missions/domain/mission_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/mission_detail_screen.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/mission_providers.dart';
 import 'package:flutter/material.dart';
@@ -194,4 +196,58 @@ void main() {
     expect(find.text('Docs updated for #26'), findsWidgets);
     expect(find.text('No transitions recorded yet.'), findsNothing);
   });
+
+  testWidgets('an unknown mission id shows the not-found message', (
+    WidgetTester tester,
+  ) async {
+    await pumpDetail(tester, 'does-not-exist');
+
+    expect(find.text('This mission could not be found.'), findsOneWidget);
+  });
+
+  testWidgets('a non-not-found repository failure shows the generic message', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2400);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: <Override>[
+          appClockProvider.overrideWithValue(() => pinnedNow),
+          missionRepositoryProvider.overrideWithValue(_FailingMissionRepository()),
+        ],
+        child: MaterialApp(
+          theme: AppTheme.light(),
+          home: const MissionDetailScreen(missionId: 'mobile-foundation'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Unable to load this mission.'), findsOneWidget);
+  });
+}
+
+/// Throws something other than [MissionNotFoundException] from every method,
+/// so `MissionDetailScreen`'s generic-fallback error branch — the `_` case
+/// in `_errorMessage`, distinct from the not-found case — has a repository
+/// that can actually reach it.
+class _FailingMissionRepository implements MissionRepository {
+  @override
+  Future<List<Mission>> loadMissions() => throw Exception('boom');
+
+  @override
+  Future<Mission> loadMission(String missionId) => throw Exception('boom');
+
+  @override
+  Future<Mission> pause(String missionId) => throw Exception('boom');
+
+  @override
+  Future<Mission> resume(String missionId) => throw Exception('boom');
+
+  @override
+  Future<Mission> cancel(String missionId, {required String reason}) =>
+      throw Exception('boom');
 }
