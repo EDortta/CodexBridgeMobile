@@ -632,3 +632,136 @@ Questions carried forward:
   small and has a template to copy (`_ExplanationDialog`) — worth doing
   before this reads as intentionally abandoned rather than intentionally
   deferred.
+## 2026-08-21 — WK-20260821-http-project-repository
+
+- CodexBridge issue #5 shipped its own `ProjectHealth` enum — `ok`/
+  `degraded`/`unknown`/`disabled` — which does not line up with this app's
+  domain `ProjectHealth` (`active`/`unhealthy`/`pendingDecision`/`offline`,
+  drafted by #23 before the backend contract existed). They are four
+  different meanings, not four spellings of the same thing: `disabled` is
+  an operator decision, not an incident; `unknown` means no executor is
+  even assigned; `degraded` means executors are assigned but none live;
+  `ok` says nothing about a pending decision, which arrives as a separate
+  `pendingDecisions` integer alongside it. Rather than widen the mobile
+  enum (#23/#24 presentation-layer territory this change does not touch),
+  `HttpProjectRepository.projectHealthFromBackend` maps the pair onto it:
+  `disabled` -> `offline` ("Disabled in the registry"), `unknown` ->
+  `offline` ("No executor assigned"), `degraded` -> `unhealthy` ("No live
+  executor connected"), `ok` with `pendingDecisions > 0` -> `pendingDecision`
+  (count in the attention text), `ok` otherwise -> `active`. This is a
+  judgment call, not something the contract dictates, flagged here the same
+  way the auth work's access-code-vs-username/password gap was flagged
+  earlier the same day — an operator who disagrees with the priority order
+  (pending-decision only shown when otherwise `ok`) should treat this as a
+  one-file change (`http_project_repository.dart`'s
+  `projectHealthFromBackend`), not an architecture change.
+- The 404-not-403 pattern (`getProject`: "confirming that an identifier
+  exists is what probing is for") only bites at `GET /projects/{id}`, not
+  at the list endpoint — `GET /projects` already filters to the caller's
+  visible scope in the query, so an out-of-scope project simply never
+  appears in `items`. `ProjectRepository.loadProject` therefore returns
+  `ProjectSummary?` (`null` = not found, mapped straight from a 404) while
+  every other non-2xx status throws `ProjectRepositoryException` — and
+  `projectByIdProvider` (`lib/app/project_dashboard_screen.dart`'s only
+  caller) already treated a `null` value distinctly from an `AsyncError`
+  before this change, so wiring the real endpoint in needed no widget-level
+  change to preserve that separation.
+- Followed `HttpLiveSessionRepository`/`live_session_providers.dart`'s
+  established shape rather than `HttpAuthGateway`'s: `ProjectRepository`
+  methods take `{required Uri server, required String accessToken}` as
+  per-call parameters (not constructor state), and the presentation layer
+  (`project_providers.dart`) resolves them from `gatewayContextProvider`
+  before calling — the same seam missions already use, rather than the
+  injected-resolver-callable shape `HttpAuthGateway` needs for its own
+  chicken-and-egg problem (no session exists yet at sign-in time to carry a
+  `GatewayContext`). This ripples `gatewayContextProvider` into every
+  test that renders `ProjectsScreen` or navigates through it —
+  `test/features/projects/presentation/projects_screen_test.dart` and
+  `test/app/app_router_test.dart` both needed a fixed override added, the
+  same one `test/app/project_dashboard_screen_test.dart` already carried.
+- `HttpLiveSessionRepository`'s own gap — none of its calls bounded by a
+  timeout — is exactly what this change avoids repeating:
+  `HttpProjectRepository` bounds `connectionTimeout`, the request-close
+  await, and the body-read await, all with the same `.timeout(timeout)`
+  discipline `HttpAuthGateway` already established, and
+  `http_project_repository_test.dart` has a dedicated test (a server that
+  accepts the connection and never answers) proving it actually fires
+  rather than just being present in the code.
+- Wired the real/mock switch exactly like `auth_gateway_binding.dart`:
+  `projectRepositoryProvider` still defaults to `MockProjectRepository`
+  (every widget test, every debug build until `main.dart`'s overrides
+  apply), and `lib/app/project_repository_binding.dart` overrides it with
+  `HttpProjectRepository` under `kReleaseMode` — the branch itself pulled
+  into `resolveProjectRepository`, tested directly the same way
+  `resolveAuthGateway` is, since `kReleaseMode` never flips inside one test
+  process.
+- Not done: real pagination. `loadProjects` reads one page at whatever the
+  server's default `limit` is and ignores `page.hasMore`/`nextCursor` —
+  the same simplification `HttpLiveSessionRepository` already made for
+  `/api/v1/sessions`. The backend module's own docstring calls its
+  registry "operator-curated and expected to hold at most a few hundred
+  rows," so this is unlikely to hide a project today, but it is a real gap
+  for a follow-up issue once the registry grows past one page.
+- `flutter analyze` clean; `flutter test` 423/423 (16 new in
+  `http_project_repository_test.dart`, 2 new in
+  `project_repository_binding_test.dart`, plus updates to
+  `projects_screen_test.dart` and `app_router_test.dart` to carry the new
+  `gatewayContextProvider` dependency — no regressions).
+
+## 2026-08-21 — WK-20260821-http-decision-repository
+
+- The briefing said "get the client's handling of a 409 (stale revision)
+  conflict right" — reading `gateway/app/api/routes/decisions.py` and
+  `concurrency.py` in the CodexBridge repo (not the docs) showed the real
+  split is finer: `concurrency.require_if_match` answers a stale `If-Match`
+  with **412** (RFC 9110 §13.1.1 — the correct code for a failed
+  precondition), and `_resolve`'s own `DECIDABLE` check answers a decision
+  that already left `pending` with **409**. Both mean the same thing to an
+  operator — "this changed since you looked; re-read it and decide again" —
+  so `HttpDecisionRepository` maps both to one `DecisionConflictException`
+  rather than mirroring the two status codes as two client types. Lesson:
+  when a task names a status code from memory or a summary, verify it
+  against the route handler that raises it before writing a test around
+  that number — the real contract had two codes doing what the brief
+  described as one.
+- `DecisionRepository.approve`/`reject`/`requestRevision` carry no revision
+  parameter — unlike `LiveSessionRepository.controlSession`, `Decision` has
+  no `revision` field to cache. Adding one would have reached
+  `decision_providers.dart`, `decision_detail_screen.dart`, and every
+  existing decisions test for a value only the HTTP repository needs. Kept
+  the domain contract untouched instead: each resolve call fetches the
+  current revision first (`GET /api/v1/decisions/{id}`), then sends it back
+  as `If-Match` on the write — the same two-network-call shape
+  `HttpAuthGateway.signIn` already uses (post the grant, then resolve
+  `/auth/me`) for the same reason: a value the caller never had a chance to
+  read is not one it can be asked to pass in.
+- The server's `Decision` DTO (`_decision_dto` in `decisions.py`) is a much
+  flatter shape than the domain `Decision` this app already had a full UI
+  built against (`decision_detail_screen.dart`, from the mock-only #26):
+  no `impactSummary`, `recommendationSummary`, `context`, `riskDetails`,
+  `evidence`, `affectedEntities`, or `discussion` — the contract's own
+  `Decision` schema comment says as much ("no submission path in this build
+  populates them"). Rather than fabricate content for fields the backend
+  itself documents as unpopulated, `HttpDecisionRepository` defaults them
+  empty and leaves the gap visible in the UI (`_ContextCard`/`_DiscussionCard`
+  already render nothing for empty sections). The one exception:
+  `auditTrail` gets one synthesized entry from `rationale`/`decidedAt` when
+  a decision is resolved, so "Resolution history" does not say "No
+  resolution actions yet." next to a state badge that says otherwise — but
+  the resolving actor's identity is not in this response (only who
+  *requested* the decision is), so the entry is honestly labeled `'Unknown
+  actor'` rather than misattributed to the requester. `discuss()` throws:
+  `decisions.py` has no comment/discussion endpoint at all.
+- Every decision this backend serves today is `sensitive`
+  (`decisions.py`'s own module docstring), and the gateway refuses to
+  approve a sensitive decision without an explicit `confirm: true` in the
+  body. `HttpDecisionRepository.approve` sends `confirm: true`
+  unconditionally rather than adding a parameter `DecisionRepository.approve`
+  has no other use for — tapping "Approve" in `DecisionDetailScreen` is
+  already the deliberate act the flag proves happened (a critical decision
+  additionally makes the operator check an acknowledgement box first).
+- Action next time: before implementing a client against "the docs say
+  status X", grep the actual route handler for every `ApiError`/`raise` it
+  can produce and cross-check against the OpenAPI response list — the two
+  can and did disagree in ways that change which exception type a client
+  needs, not just which number a test asserts on.

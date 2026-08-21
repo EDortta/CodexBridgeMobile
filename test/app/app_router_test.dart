@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:codex_bridge_mobile/app/app.dart';
 import 'package:codex_bridge_mobile/app/app_router.dart';
 import 'package:codex_bridge_mobile/app/project_dashboard_screen.dart';
+import 'package:codex_bridge_mobile/core/gateway/gateway_context.dart';
+import 'package:codex_bridge_mobile/core/gateway/gateway_context_provider.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_routes.dart';
 import 'package:codex_bridge_mobile/features/decisions/presentation/decision_detail_screen.dart';
@@ -265,6 +267,19 @@ Future<void> _pumpApp(
 }) async {
   await tester.pumpWidget(
     ProviderScope(
+      overrides: <Override>[
+        // `projectsProvider` (and `projectByIdProvider`) now need a
+        // `GatewayContext` the same way the missions feature's providers
+        // already do — this router test exercises navigation, not auth, so
+        // it fixes one here rather than routing every scenario through a
+        // real sign-in flow.
+        gatewayContextProvider.overrideWith(
+          (Ref ref) async => GatewayContext(
+            server: Uri.parse('https://bridge.example.com'),
+            accessToken: 'access-token',
+          ),
+        ),
+      ],
       child: CodexBridgeMobileApp(
         router: createAppRouter(initialLocation: initialLocation),
       ),

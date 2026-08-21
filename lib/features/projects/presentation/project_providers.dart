@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/gateway/gateway_context.dart';
+import '../../../core/gateway/gateway_context_provider.dart';
 import '../../../core/storage/secure_storage_providers.dart';
 import '../data/mock_project_repository.dart';
 import '../data/secure_project_favorites_store.dart';
@@ -13,7 +15,17 @@ final Provider<ProjectRepository> projectRepositoryProvider =
 
 final FutureProvider<List<ProjectSummary>> projectsProvider =
     FutureProvider<List<ProjectSummary>>((Ref ref) async {
-      return ref.watch(projectRepositoryProvider).loadProjects();
+      final GatewayContext? context = await ref.watch(
+        gatewayContextProvider.future,
+      );
+      if (context == null) {
+        throw const ProjectRepositoryException(
+          'Select a server and sign in to view projects.',
+        );
+      }
+      return ref
+          .watch(projectRepositoryProvider)
+          .loadProjects(server: context.server, accessToken: context.accessToken);
     });
 
 final Provider<ProjectFavoritesStore> projectFavoritesStoreProvider =
@@ -99,27 +111,38 @@ final Provider<AsyncValue<List<ProjectListItem>>> projectListProvider =
       ]);
     });
 
-/// A single project by id, derived from [projectsProvider]'s already-loaded
-/// list rather than a new repository method — `MockProjectRepository`
-/// always returns every record anyway. A future real `loadProject(id)` HTTP
-/// call can replace this provider's body without touching call sites, since
-/// its signature (`AsyncValue<ProjectSummary?>`, `null` meaning "not found")
-/// would not need to change.
+/// A single project by id, from `GET /api/v1/projects/{id}` — a dedicated
+/// call rather than a lookup in [projectsProvider]'s already-loaded list, so
+/// a project outside the caller's visible scope reports "not found" (`null`,
+/// from the backend's own 404-not-403 answer, `ProjectRepository.loadProject`'s
+/// doc comment) even when it was never in that list to begin with, and so a
+/// deep link straight to a project detail does not first need the whole list
+/// loaded.
+final AutoDisposeFutureProviderFamily<ProjectSummary?, String>
+_projectDetailProvider = FutureProvider.autoDispose.family<ProjectSummary?, String>((
+  Ref ref,
+  String id,
+) async {
+  final GatewayContext? context = await ref.watch(gatewayContextProvider.future);
+  if (context == null) {
+    throw const ProjectRepositoryException(
+      'Select a server and sign in to view this project.',
+    );
+  }
+  return ref
+      .watch(projectRepositoryProvider)
+      .loadProject(server: context.server, accessToken: context.accessToken, id: id);
+});
+
+/// Public shape kept stable ([AsyncValue<ProjectSummary?>], `null` meaning
+/// "not found") across the [_projectDetailProvider] change above, so no call
+/// site (`lib/app/project_dashboard_screen.dart`) needed to change.
 final ProviderFamily<AsyncValue<ProjectSummary?>, String> projectByIdProvider =
     Provider.family<AsyncValue<ProjectSummary?>, String>((
       Ref ref,
       String id,
     ) {
-      return ref
-          .watch(projectsProvider)
-          .whenData(
-            (List<ProjectSummary> list) => list
-                .cast<ProjectSummary?>()
-                .firstWhere(
-                  (ProjectSummary? p) => p!.id == id,
-                  orElse: () => null,
-                ),
-          );
+      return ref.watch(_projectDetailProvider(id));
     });
 
 final StateProvider<String> projectSearchQueryProvider =
