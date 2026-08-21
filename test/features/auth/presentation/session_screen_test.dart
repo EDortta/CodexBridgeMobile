@@ -236,6 +236,20 @@ void main() {
           'the button stayed disabled behind a spinner that never stops, and '
           'nothing on screen said why',
     );
+
+    // The password is a credential, cleared the moment it is handed to the
+    // gateway. The username is not a secret, and is left in place so the
+    // operator can retry a mistyped password without retyping who they are.
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(0)).controller?.text,
+      'an-operator',
+      reason: 'the username is not a credential and survives a failed sign-in',
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(1)).controller?.text,
+      isEmpty,
+      reason: 'the password is cleared as soon as it reaches the gateway',
+    );
   });
 
   testWidgets('the Account screen reaches the session screen', (

@@ -38,9 +38,11 @@ class SessionScreen extends ConsumerWidget {
 
 /// Stateful only to own the username and password controllers.
 ///
-/// Neither controller is ever seeded from state, and both are cleared as soon
-/// as the credential has been handed to the gateway, so it does not sit in
-/// memory behind a screen the operator has stopped looking at.
+/// Neither controller is ever seeded from state. The password is cleared as
+/// soon as it has been handed to the gateway, so it does not sit in memory
+/// behind a screen the operator has stopped looking at. The username is
+/// deliberately left in place: it is not a secret, and keeping it lets an
+/// operator who mistyped the password retry without retyping who they are.
 class _SignInForm extends ConsumerStatefulWidget {
   const _SignInForm({required this.state});
 

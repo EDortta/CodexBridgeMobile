@@ -495,3 +495,19 @@ Questions carried forward:
   interleaving. Until a follow-up does that pass, a signed-out device's
   server-side grant lives out its own TTL (short access token, up to 7-day
   refresh token) instead of being revoked immediately.
+- [2026-08-21] WK-20260821-gh-22-council-round-2-doc-drift — council round 2
+  on PR #52 flagged that `_SignInForm`'s doc comment claimed "both [username
+  and password] are cleared as soon as the credential has been handed to the
+  gateway", but `_signIn()` only ever called `_password.clear()`. Code and
+  comment had silently drifted at some point after the comment was written.
+  Judgment call: kept the code as-is (not clearing the username is better
+  UX — an operator who mistypes a password can retry without retyping who
+  they are, and a username is not itself a secret) and corrected the comment
+  to say so explicitly, rather than making the code match the stale comment.
+  Added assertions to the existing "device cannot store" widget test
+  confirming the password field is empty and the username field is not,
+  after a failed sign-in. Action next time: when a doc comment makes a
+  blanket claim about symmetric handling of two things ("neither... both...
+  every..."), grep the implementation for that exact behavior on both
+  before trusting the comment — this is cheap and catches drift a normal
+  read-through skims past.
