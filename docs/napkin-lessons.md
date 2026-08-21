@@ -426,3 +426,72 @@ Questions carried forward:
   against the issue's own acceptance criteria, not just the PR's aggregate
   diff, to catch a stray commit that the aggregate diff would only show as
   "extra files changed."
+
+## 2026-08-21 — WK-20260821-http-auth-gateway
+
+- `authGatewayProvider` returning `MockAuthGateway` unconditionally, even in
+  release builds, was `security-threat-model.md` finding R2. Closing it
+  needed more than swapping the class: the interface itself
+  (`AuthGateway.signIn(String accessCode)`) was shaped around a wrong guess.
+  `EDortta/CodexBridge` issue #4 landed `POST /api/v1/auth/sign-in` needing
+  a **username and a password**, not one opaque code — confirmed by reading
+  `gateway/app/api/routes/auth.py` and `docs/api/codex-bridge.openapi.yaml`
+  in the sibling repo before writing any client code. The mobile sign-in
+  screen had exactly one obscured "Access code" field to match the old
+  guess. **Lesson:** when a domain interface predates the real contract it
+  was drafted against, read the real contract before implementing the HTTP
+  client — a client that faithfully implements a wrong-shaped interface
+  cannot sign anyone in, no matter how correct its error handling is.
+  Fixed by correcting the seam (`signIn({required username, required
+  password})`), propagating through `MockAuthGateway`, `SessionController`,
+  and `session_screen.dart` (username field added, password field replaces
+  the old access-code field) — contained to the `auth` feature, no other
+  feature touched.
+- Neither `POST /auth/sign-in` nor `POST /auth/refresh` returns the actor's
+  identity — only `GET /auth/me` resolves a token to `{id, email}`.
+  `Session.operatorId`/`operatorName` therefore cannot be filled from the
+  sign-in response alone; `HttpAuthGateway.signIn` calls `/auth/me` once,
+  right after a successful sign-in, and fails closed (`AuthDenied.
+  unreachable`) if that second call does not resolve — inventing an
+  identity from the username the operator typed would violate
+  `session.dart`'s own documented invariant ("never taken from anything the
+  client supplied"). `renew` does not repeat this call: a rotation is the
+  same actor renewing the same grant, so the identity is carried forward
+  from the session being renewed instead of paying a second round trip on
+  every renewal.
+- No "use mock data" toggle existed anywhere in this codebase to reuse
+  (`liveSessionRepositoryProvider` wires `HttpLiveSessionRepository`
+  unconditionally, in every build) — confirmed by grep before inventing one.
+  Gated `authGatewayProvider` on `kReleaseMode` instead, composed in
+  `lib/app/auth_gateway_binding.dart` exactly like `gateway_context_binding.
+  dart` composes auth + server: a feature must not import another feature's
+  `presentation/` layer (`test/architecture/layer_boundaries_test.dart`
+  enforces this at test time), so the binding that needs both `auth` and
+  `server` has to live in `lib/app/`, not in either feature. The
+  release/debug branch itself is pulled into a plain function
+  (`resolveAuthGateway`) so both branches run under a normal unit test
+  instead of only ever exercising whichever one `kReleaseMode` happens to
+  compile to in a given test process.
+- `HttpServerProbe`'s own test stops at the pure `reportForTransportFailure`
+  function because a real TLS round trip would need a self-signed
+  certificate committed to the repo (`security-standards.md` §1 forbids
+  that even for a test). `HttpAuthGateway`'s tests do not have that
+  obstacle — they bind a real local `HttpServer` over plain HTTP
+  (`InternetAddress.loopbackIPv4`, port 0) and exercise the actual
+  `dart:io` request/response round trip, including the two-call sign-in
+  sequence (`/auth/sign-in` then `/auth/me`) and the "grant issued but
+  never identified" failure path. `HttpLiveSessionRepository` — this
+  codebase's other real HTTP-calling repository — turned out to have zero
+  test coverage at all (`grep -rln HttpServer.bind test/` was empty before
+  this change); its existence was not itself evidence of a testing pattern
+  to copy, only of a gap worth naming, not silently repeating.
+- Left open, named rather than silently skipped: `SessionController.
+  signOut` still only clears the local keystore. `HttpAuthGateway.revoke()`
+  (calls `POST /api/v1/auth/revoke`) exists and is tested, but is not wired
+  into `signOut` — that method is the most race-hardened part of this
+  feature (three separate `_signOutGeneration` checks exist solely to stop
+  a renewal from resurrecting a session the operator just removed), and
+  giving it a network call needs its own pass over that exact kind of
+  interleaving. Until a follow-up does that pass, a signed-out device's
+  server-side grant lives out its own TTL (short access token, up to 7-day
+  refresh token) instead of being revoked immediately.

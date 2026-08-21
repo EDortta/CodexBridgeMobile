@@ -36,11 +36,11 @@ class SessionScreen extends ConsumerWidget {
   }
 }
 
-/// Stateful only to own the access-code controller.
+/// Stateful only to own the username and password controllers.
 ///
-/// The controller is never seeded from state and is cleared as soon as the code
-/// has been handed to the gateway, so a credential does not sit in memory
-/// behind a screen the operator has stopped looking at.
+/// Neither controller is ever seeded from state, and both are cleared as soon
+/// as the credential has been handed to the gateway, so it does not sit in
+/// memory behind a screen the operator has stopped looking at.
 class _SignInForm extends ConsumerStatefulWidget {
   const _SignInForm({required this.state});
 
@@ -51,11 +51,13 @@ class _SignInForm extends ConsumerStatefulWidget {
 }
 
 class _SignInFormState extends ConsumerState<_SignInForm> {
-  final TextEditingController _accessCode = TextEditingController();
+  final TextEditingController _username = TextEditingController();
+  final TextEditingController _password = TextEditingController();
 
   @override
   void dispose() {
-    _accessCode.dispose();
+    _username.dispose();
+    _password.dispose();
     super.dispose();
   }
 
@@ -90,7 +92,18 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
         ],
         const SizedBox(height: AppSpacing.md),
         TextField(
-          controller: _accessCode,
+          controller: _username,
+          autocorrect: false,
+          enableSuggestions: false,
+          textInputAction: TextInputAction.next,
+          decoration: const InputDecoration(
+            labelText: 'Username',
+            border: OutlineInputBorder(),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.sm),
+        TextField(
+          controller: _password,
           // The credential is masked and kept out of every keyboard convenience
           // that would otherwise copy it somewhere this app does not control.
           obscureText: true,
@@ -99,7 +112,7 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
           textInputAction: TextInputAction.done,
           onSubmitted: (String _) => _signIn(),
           decoration: InputDecoration(
-            labelText: 'Access code',
+            labelText: 'Password',
             border: const OutlineInputBorder(),
             errorText: state.failure?.message,
           ),
@@ -121,9 +134,14 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
   /// nothing here awaits it — `unawaited` says that on the page rather than
   /// leaving a dropped future for the next reader to wonder about.
   void _signIn() {
-    final String code = _accessCode.text;
-    _accessCode.clear();
-    unawaited(ref.read(sessionProvider.notifier).signIn(code));
+    final String username = _username.text;
+    final String password = _password.text;
+    _password.clear();
+    unawaited(
+      ref
+          .read(sessionProvider.notifier)
+          .signIn(username: username, password: password),
+    );
   }
 }
 

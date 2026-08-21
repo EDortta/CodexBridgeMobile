@@ -4,9 +4,13 @@ import 'session.dart';
 ///
 /// The seam that lets the whole session lifecycle be exercised without a server
 /// (`design-standards.md` §2). The interface is shaped by what this app needs,
-/// not by a client library, so when the Codex Bridge authentication contract
-/// lands (`EDortta/CodexBridge` issue #4) exactly one file in `data/` changes
-/// and nothing above this line moves.
+/// not by a client library — which is also why [signIn] takes a username and a
+/// password rather than the single opaque `accessCode` first drafted here: the
+/// Codex Bridge authentication contract that landed (`EDortta/CodexBridge`
+/// issue #4) needs both, and the seam is corrected to match rather than left
+/// wrong to keep the original prediction ("exactly one file in `data/` changes")
+/// true. [renew] took no such correction, so only [HttpAuthGateway] in `data/`,
+/// the controller call site and the sign-in screen moved.
 ///
 /// **Neither method throws.** A refused credential, an unreachable server and a
 /// closed refresh window are all [AuthDenied] values, because the caller of a
@@ -16,10 +20,21 @@ import 'session.dart';
 abstract interface class AuthGateway {
   /// Exchanges an operator credential for a session.
   ///
-  /// [accessCode] is the credential the operator obtains from their Codex
-  /// Bridge account. It is never stored and never logged: it enters here and
-  /// leaves as a [Session].
-  Future<AuthOutcome> signIn(String accessCode);
+  /// [username] and [password] are the credential the operator holds in the
+  /// Codex Bridge user registry. Neither is stored and neither is logged: they
+  /// enter here and leave as a [Session].
+  ///
+  /// Originally shaped as a single opaque `accessCode`, on the assumption the
+  /// server would hand out one API-key-style credential
+  /// (`EDortta/CodexBridge` issue #4, tracked by `docs/issues/phase-1/README.md`).
+  /// The contract that actually landed is `POST /api/v1/auth/sign-in` with a
+  /// username *and* a password — the same registry entry the browser OAuth
+  /// flow already checks — so the seam is corrected to match rather than
+  /// forcing a two-part credential through a one-string parameter.
+  Future<AuthOutcome> signIn({
+    required String username,
+    required String password,
+  });
 
   /// Exchanges [session]'s refresh credential for a new session.
   ///

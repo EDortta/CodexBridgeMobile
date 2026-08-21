@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
 import 'app/app_router.dart';
+import 'app/auth_gateway_binding.dart';
 import 'app/gateway_context_binding.dart';
 
 /// Process entry point.
@@ -12,7 +13,7 @@ import 'app/gateway_context_binding.dart';
 /// one.
 void main() => runApp(
   ProviderScope(
-    overrides: <Override>[gatewayContextBinding],
+    overrides: <Override>[authGatewayBinding, gatewayContextBinding],
     child: CodexBridgeMobileApp(router: createAppRouter()),
   ),
 );

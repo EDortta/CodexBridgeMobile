@@ -274,7 +274,7 @@ void main() {
 
       await result.container
           .read(sessionProvider.notifier)
-          .signIn('an-access-code');
+          .signIn(username: 'operator', password: 'an-access-code');
 
       final AuthState state = result.container.read(sessionProvider).value!;
       expect(state, isA<SignedIn>());
@@ -293,7 +293,10 @@ void main() {
       );
       await stateOf(result.container);
 
-      await result.container.read(sessionProvider.notifier).signIn('wrong');
+      await result.container.read(sessionProvider.notifier).signIn(
+        username: 'operator',
+        password: 'wrong',
+      );
 
       final SignedOut state =
           result.container.read(sessionProvider).value! as SignedOut;
@@ -319,7 +322,10 @@ void main() {
       );
       await stateOf(result.container);
 
-      await result.container.read(sessionProvider.notifier).signIn('wrong');
+      await result.container.read(sessionProvider.notifier).signIn(
+        username: 'operator',
+        password: 'wrong',
+      );
 
       final SignedOut state =
           result.container.read(sessionProvider).value! as SignedOut;
@@ -333,7 +339,9 @@ void main() {
       final result = containerWith(gateway: gateway);
       await stateOf(result.container);
 
-      await result.container.read(sessionProvider.notifier).signIn(code);
+      await result.container
+          .read(sessionProvider.notifier)
+          .signIn(username: 'operator', password: code);
 
       expect(gateway.codes, <String>[code]);
       expect(
@@ -358,7 +366,10 @@ void main() {
       );
       await stateOf(result.container);
 
-      await result.container.read(sessionProvider.notifier).signIn('wrong');
+      await result.container.read(sessionProvider.notifier).signIn(
+        username: 'operator',
+        password: 'wrong',
+      );
 
       expect(result.container.read(sessionProvider).value, isA<SignedIn>());
       expect(gateway.codes, isEmpty);
@@ -392,8 +403,14 @@ void main() {
           sessionProvider.notifier,
         );
 
-        final Future<void> first = notifier.signIn('first-code');
-        final Future<void> second = notifier.signIn('second-code');
+        final Future<void> first = notifier.signIn(
+          username: 'operator',
+          password: 'first-code',
+        );
+        final Future<void> second = notifier.signIn(
+          username: 'operator',
+          password: 'second-code',
+        );
 
         // The grant lands, and is fully persisted and shown, before the
         // refusal for the other call is even produced.
@@ -449,7 +466,10 @@ void main() {
           sessionProvider.notifier,
         );
 
-        final Future<void> signingIn = notifier.signIn('first-code');
+        final Future<void> signingIn = notifier.signIn(
+          username: 'operator',
+          password: 'first-code',
+        );
         await notifier.signOut();
 
         expect(
@@ -461,7 +481,7 @@ void main() {
               'was still in flight',
         );
 
-        await notifier.signIn('second-code');
+        await notifier.signIn(username: 'operator', password: 'second-code');
 
         expect(
           gateway.calls,
@@ -512,7 +532,10 @@ void main() {
         final BlockingDeleteSecureKeyValueStore storage =
             result.storage as BlockingDeleteSecureKeyValueStore;
 
-        final Future<void> signingIn = notifier.signIn('a-code');
+        final Future<void> signingIn = notifier.signIn(
+          username: 'operator',
+          password: 'a-code',
+        );
         final Future<void> signingOut = notifier.signOut();
 
         // The sign-in is refused before the sign-out's delete resolves.
@@ -601,7 +624,7 @@ void main() {
 
       await result.container
           .read(sessionProvider.notifier)
-          .signIn('an-access-code');
+          .signIn(username: 'operator', password: 'an-access-code');
 
       final SignedOut state =
           result.container.read(sessionProvider).value! as SignedOut;
@@ -731,7 +754,10 @@ void main() {
       );
       await stateOf(result.container);
 
-      await result.container.read(sessionProvider.notifier).signIn('wrong');
+      await result.container.read(sessionProvider.notifier).signIn(
+        username: 'operator',
+        password: 'wrong',
+      );
 
       final SignedOut state =
           result.container.read(sessionProvider).value! as SignedOut;
@@ -773,7 +799,10 @@ void main() {
           sessionProvider.notifier,
         );
 
-        final Future<void> signingIn = notifier.signIn('wrong-code');
+        final Future<void> signingIn = notifier.signIn(
+          username: 'operator',
+          password: 'wrong-code',
+        );
         await notifier.signOut();
 
         expect(
@@ -1093,7 +1122,10 @@ void main() {
           reason: 'the fake refused the delete; the removal really failed',
         );
 
-        await first.read(sessionProvider.notifier).signIn('good-code');
+        await first.read(sessionProvider.notifier).signIn(
+          username: 'operator',
+          password: 'good-code',
+        );
         expect(
           first.read(sessionProvider).value,
           isA<SignedIn>(),
@@ -1144,7 +1176,10 @@ class _SequencedAuthGateway implements AuthGateway {
   int get calls => _calls;
 
   @override
-  Future<AuthOutcome> signIn(String accessCode) => _outcomes[_calls++].future;
+  Future<AuthOutcome> signIn({
+    required String username,
+    required String password,
+  }) => _outcomes[_calls++].future;
 
   @override
   Future<AuthOutcome> renew(Session session) => throw UnimplementedError();
@@ -1168,7 +1203,10 @@ class _SequencedRenewalGateway implements AuthGateway {
   int get calls => _calls;
 
   @override
-  Future<AuthOutcome> signIn(String accessCode) => throw UnimplementedError();
+  Future<AuthOutcome> signIn({
+    required String username,
+    required String password,
+  }) => throw UnimplementedError();
 
   @override
   Future<AuthOutcome> renew(Session session) => _outcomes[_calls++].future;
@@ -1188,8 +1226,11 @@ class _FakeAuthGateway implements AuthGateway {
   int renewals = 0;
 
   @override
-  Future<AuthOutcome> signIn(String accessCode) async {
-    codes.add(accessCode);
+  Future<AuthOutcome> signIn({
+    required String username,
+    required String password,
+  }) async {
+    codes.add(password);
     return signInOutcome ?? AuthGranted(_granted('granted-access-token'));
   }
 
