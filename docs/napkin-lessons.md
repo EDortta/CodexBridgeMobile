@@ -512,6 +512,126 @@ Questions carried forward:
   before trusting the comment — this is cheap and catches drift a normal
   read-through skims past.
 
+## 2026-08-21 — WK-20260821-http-mission-repository
+
+- The real gateway's `Mission` is much thinner than this app's `Mission`
+  domain model, and the two describe genuinely different things.
+  `gateway/app/api/routes/missions.py`'s own module docstring says it
+  outright: a mission is the same `TaskModel` row `/api/v1/sessions`
+  serves, reframed — "no dependency graph, no 'related entities' table, no
+  execution-progress percentage". `mission_control_action.dart`'s doc
+  comment on this mobile repo independently says the same thing from the
+  other side: "a `Mission` is a local, mock-backed planning record (no
+  gateway round trip, no `If-Match` revision)". Both were right, and
+  wiring missions for real means reconciling them, not just swapping the
+  repository implementation the way `HttpAuthGateway` could. Confirmed by
+  reading the real DTO (`_mission_dto` in `missions.py`) and the OpenAPI
+  `Mission` schema before writing any client code — the same rule the
+  `http-auth-gateway` entry above already names, and it paid off the same
+  way: the mismatch would have been a runtime surprise instead of a
+  design decision if skipped.
+- Judgment call, the biggest one in this change: rather than reshape
+  `Mission` and every screen that renders it (`mission_detail_screen.dart`,
+  `work_screen.dart`, the four filter providers) to match the gateway's
+  thinner shape — out of scope for "wire missions for real" and a much
+  bigger blast radius — `HttpMissionRepository._missionFromDto` maps the
+  gateway's fields onto the existing model with clearly-documented, lossy
+  approximations: the gateway's coarse 3-value `stage`
+  (`pending`/`active`/`done`, a grouping over execution state) is mapped
+  by ordinal position onto the mobile app's 5-value `MissionStage`
+  (`planning`..`documentation`, a software-development phase) —
+  `pending`→`planning`, `active`→`implementation`, `done`→`documentation`;
+  `testing`/`validation` are simply unreachable from a real mission. The
+  gateway's `risk` (a policy level: `read`/`controlled_write`/`sensitive`)
+  maps onto `MissionRisk` (`low`/`medium`/`high`) the same way. `owner`
+  becomes the executor id (`assignedAgent`) rather than a human name;
+  `progress` collapses to a coarse 0.0/1.0 done-or-not signal (the gateway
+  reports no percentage); `dependencies`/`tests`/`files`/`artifacts`/
+  `relatedDecisionIds` are always empty (the gateway's own contract
+  explains why it does not fabricate these either: "shipping an
+  always-empty array would be a field a mobile client can build UI around
+  and never see populated" — the same reasoning applies to this client
+  consuming it). Action next time: a follow-up issue should reconcile
+  `Mission` with what the gateway actually reports — either thin the
+  domain model down or give the gateway a richer mission concept — rather
+  than let this mapping function be the only place that knows how lossy
+  the current model is.
+- The gateway's `POST /missions/{id}/cancel` has no request body at all —
+  confirmed by reading both the route handler and the OpenAPI operation,
+  which lists only `If-Match`/`Idempotency-Key` headers. The mobile
+  `MissionRepository.cancel(missionId, {required reason})` contract
+  predates this and still requires a non-empty `reason` (kept, so
+  `MockMissionRepository` and `HttpMissionRepository` validate the same
+  precondition) — but `HttpMissionRepository` has nowhere to send it. The
+  real mission's timeline will read "Cancelled by an operator.", never the
+  operator's typed reason, until the contract grows a field for one. Judgment
+  call: validate and discard rather than silently drop the requirement or
+  invent a place to stash it (a query param, a `X-Cancel-Reason` header no
+  server reads) — discarding a value nobody asked for is more honest than
+  smuggling it somewhere unspecified. Flagged in the PR description as a
+  product gap for `EDortta/CodexBridge`, not treated as this change's bug
+  to route around.
+- `MissionRepository.cancel` needed a revision for `If-Match`, but the
+  interface has exactly one call site (`MissionDetailScreen`'s
+  `_ActionsCard`, itself holding the freshly-loaded `Mission` already) —
+  unlike `LiveSessionRepository.controlSession`, which can fire from either
+  the sessions list (cached revision) or the detail screen, and so needs
+  `_revisionFor`'s two-path lookup. Rather than add a `revision` field to
+  `Mission` and thread it through every call site and every existing
+  `MockMissionRepository` test just to satisfy one caller,
+  `HttpMissionRepository.cancel` fetches the mission fresh internally,
+  immediately before the write, and reads `revision` off that response —
+  zero interface signature change, zero blast radius on the ~20 existing
+  mock-repository tests. `live_session_providers.dart`'s own comment on
+  fetching fresh ("the revision sent is never a stale copy of one the
+  detail screen's own, independently loaded session has already moved
+  past") is the same reasoning, just with nothing else to check first.
+- No shared HTTP-client infrastructure existed to reuse — confirmed by
+  `find lib -path '*core/http*'` (empty) before writing anything, the same
+  check the `http-auth-gateway` entry above describes for its own
+  "no mock toggle" finding. `HttpLiveSessionRepository` and
+  `HttpAuthGateway` each construct their own `dart:io HttpClient` per
+  call with their own private `_jsonObject`/`_messageOf` helpers;
+  `HttpMissionRepository` duplicates that same shape rather than
+  extracting a shared base now — a three-way near-identical duplication is
+  a legitimate signal to extract a `core/http/` client, but doing that
+  extraction as a side effect of this change would have put an untested
+  refactor of two already-shipped, already-tested classes in the same PR
+  as new functionality. Named here as a concrete follow-up instead of
+  quietly repeating the duplication a fourth time in the future.
+- `resolveContext` (a `Future<(Uri, String)?> Function()`, not a
+  `GatewayContext` import) is `HttpMissionRepository`'s constructor seam,
+  deliberately mirroring `HttpAuthGateway`'s `resolveServer` rather than
+  `HttpLiveSessionRepository`'s per-call `{required server, required
+  accessToken}` parameters. The per-call-params shape was the closer
+  structural analog (an authenticated repository fetching entities, the
+  same "class" of problem) and was tried first, but it would have forced
+  `required Uri server, required String accessToken` onto every
+  `MissionRepository` method including `MockMissionRepository`'s, which
+  needs neither — breaking every one of the ~20 existing
+  `mock_mission_repository_test.dart`/`mission_detail_screen_test.dart`/
+  `work_screen_test.dart` call sites for a parameter the mock would only
+  ever ignore. The constructor-seam shape keeps the interface identical to
+  what it was before this change (`explain` is the only addition) and
+  composes in `lib/app/mission_repository_binding.dart` exactly like
+  `authGatewayBinding` does.
+- `explain` is wired at the repository layer only — `HttpMissionRepository.
+  explain` calls the real `POST /missions/{id}/explain` and is tested
+  against a real `HttpServer` — but `MissionDetailScreen`'s "Explain"
+  button still calls the local `Mission.explanation` getter, unchanged.
+  The two are genuinely different accounts (the getter is computed from
+  fields already on the client; the endpoint returns server-side evidence
+  including `recentStderr` this client cannot see on its own — see
+  `mission_explanation.dart`'s doc comment), and wiring the button to the
+  richer one is real UI work (a loading state, an error state, mirroring
+  `work_session_detail_screen.dart`'s `_ExplanationDialog` for live
+  sessions) that was left out to keep this change scoped to the
+  repository/data layer, matching how the task that requested this change
+  itself framed "list/detail/timeline/cancel/explain" as repository
+  capabilities. Action next time: the follow-up that wires the button is
+  small and has a template to copy (`_ExplanationDialog`) — worth doing
+  before this reads as intentionally abandoned rather than intentionally
+  deferred.
 ## 2026-08-21 — WK-20260821-http-project-repository
 
 - CodexBridge issue #5 shipped its own `ProjectHealth` enum — `ok`/

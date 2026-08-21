@@ -8,6 +8,7 @@ import 'package:codex_bridge_mobile/core/design/app_theme.dart';
 import 'package:codex_bridge_mobile/core/design/operational_text_theme.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission.dart';
+import 'package:codex_bridge_mobile/features/missions/domain/mission_explanation.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_risk.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_stage.dart';
@@ -104,4 +105,13 @@ class _FakeMissionRepository implements MissionRepository {
 
   @override
   Future<Mission> cancel(String missionId, {required String reason}) async => _mission;
+
+  @override
+  Future<MissionExplanation> explain(String missionId) async =>
+      MissionExplanation(
+        missionId: _mission.id,
+        state: _mission.state.name,
+        reasons: _mission.explanation,
+        generatedAt: DateTime.utc(2026, 8, 15, 9),
+      );
 }
