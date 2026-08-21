@@ -511,3 +511,61 @@ Questions carried forward:
   every..."), grep the implementation for that exact behavior on both
   before trusting the comment — this is cheap and catches drift a normal
   read-through skims past.
+
+## 2026-08-21 — WK-20260821-gh-29-http-issue-repository
+
+- `IssueRepository` (issue #29) is load-only and unscoped: `loadIssues()`,
+  `loadEpics()`, `loadIssue(id)`, `loadEpic(id)` take no project id, because
+  the browser it backs was built to filter client-side over "every epic /
+  every issue". The real gateway (`EDortta/CodexBridge` issue #8,
+  `gateway/app/api/routes/epics.py`, `.../issues.py`) has no such endpoint —
+  `GET /api/v1/projects/{projectId}/epics` and `.../issues` are both
+  project-scoped, and there is no `GET /api/v1/epics/{epicId}` at all.
+  Reshaping the interface to carry a project id would have meant threading
+  it through routing and #29's already-shipped, already-tested screens for
+  a change nothing asked for. Instead `HttpIssueRepository` closes the gap
+  itself: it fans out across every project the operator can see
+  (`GET /api/v1/projects`) and concatenates/searches across the pages. More
+  requests than a project-scoped call would need, accepted and named in the
+  class doc rather than paid silently on every screen visit.
+- The mock's fields were shaped off CodexBridge issue #8's *proposed* scope
+  while #8 was still open (its own doc comment said so, dated 2026-08-21).
+  Now that #8 shipped, two concrete drifts turned up against the real
+  contract: (1) `EpicModel` carries no `priority` column — only issues do —
+  so `Epic.priority` became nullable (`IssuePriority?`) instead of dropped,
+  and the two screens that rendered it unconditionally
+  (`epics_screen.dart`, `epic_detail_screen.dart`) were changed to a
+  conditional badge; the mock still sets a value, so both paths stay
+  covered. (2) The real gateway's issue/epic status and priority vocabularies
+  are wider than #29's four-value `IssueStatus`/`IssuePriority` enums
+  (`issue_types.py`: six issue statuses vs. four, `medium`/`urgent` vs.
+  `normal`/`critical`). Rather than widen every enum, chip and filter #29
+  already shipped, `HttpIssueRepository` folds the wire vocabulary down at
+  the boundary (`_issueStatusFromWire` et al.) and documents each lossy
+  collision (`in_review` → in progress, `cancelled` → done) at the mapping
+  site instead of leaving it implicit.
+- The task brief assumed a "stale-revision 409" convention for the
+  optimistic-concurrency `PATCH`. Reading the actual shared helper
+  (`gateway/app/api/concurrency.py`'s `require_if_match`) showed it raises
+  **412 Precondition Failed**, not 409 — `decisions.py` has its own,
+  unrelated 409 for a *state* conflict (a decision already resolved), not a
+  *revision* conflict; `epics.py`/`issues.py` only ever call the shared
+  412-raising helper. Implemented and tested `StaleIssueRevisionException`
+  against 412, with the test name saying so explicitly, so the next reader
+  does not have to re-derive it from `concurrency.py`. Action next time: a
+  task brief's assumption about a wire-level status code is a guess, not a
+  spec — grep the shared helper the routes actually call before writing the
+  client's branch on it.
+- Following `HttpAuthGateway`'s constructor-injection idiom (a
+  `Future<GatewayContext?> Function()` closure passed in, composed only in
+  `lib/app/issue_repository_binding.dart`) rather than
+  `HttpLiveSessionRepository`'s per-call `server`/`accessToken` params kept
+  every existing `issue_providers_test.dart` test green: those tests build
+  a `ProviderContainer` overriding only `issueRepositoryProvider`, never
+  `gatewayContextProvider`, so a repository that needed context as a
+  provider dependency would have broken all of them. Same `kReleaseMode`
+  gate as `authGatewayBinding`, same pulled-out pure function
+  (`resolveIssueRepository`) so both branches run under a plain unit test.
+  Full suite after wiring: 424 tests, 0 regressions (18 new: 16 in
+  `http_issue_repository_test.dart`, 2 in `issue_repository_binding_test.
+  dart`), `flutter analyze` clean.

@@ -41,6 +41,7 @@ class ProjectIssue {
     this.blockedReason,
     this.labels = const <String>[],
     this.dependencies = const <String>[],
+    this.revision = 1,
   });
 
   final String id;
@@ -75,6 +76,14 @@ class ProjectIssue {
   /// shape `Mission.dependencies` uses and for the same reason: an issue a
   /// project no longer tracks must not leave a dangling reference.
   final List<String> dependencies;
+
+  /// The optimistic-concurrency counter the real gateway assigns
+  /// (`CodexBridge` `issues.revision`) — the same role `LiveSession.revision`
+  /// plays for a session. Defaults to `1` because `MockIssueRepository`'s
+  /// fixtures are never written back and have no server-assigned counter to
+  /// carry; a real load always overwrites this with the value the gateway
+  /// sent. Callers of a future update path send it back as `If-Match`.
+  final int revision;
 
   /// An issue the operator needs to act on — #29's "blocked indicators".
   /// Card and detail rendering pair this with an icon and the
