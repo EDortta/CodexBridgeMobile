@@ -6,6 +6,7 @@ import 'app/app_router.dart';
 import 'app/auth_gateway_binding.dart';
 import 'app/decision_repository_binding.dart';
 import 'app/gateway_context_binding.dart';
+import 'app/project_repository_binding.dart';
 
 /// Process entry point.
 ///
@@ -17,6 +18,7 @@ void main() => runApp(
     overrides: <Override>[
       authGatewayBinding,
       gatewayContextBinding,
+      projectRepositoryBinding,
       decisionRepositoryBinding,
     ],
     child: CodexBridgeMobileApp(router: createAppRouter()),
