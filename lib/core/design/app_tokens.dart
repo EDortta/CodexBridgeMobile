@@ -45,6 +45,13 @@ abstract final class AppIcons {
   static const IconData artifacts = Icons.inventory_2_outlined;
   static const IconData activity = Icons.history_rounded;
 
+  /// An epic — issue #29's Epic view, distinct from a single [issues] flag.
+  static const IconData epics = Icons.account_tree_outlined;
+
+  /// Paired with the [IssueStatus.blocked]/[MissionState.blocked] label in
+  /// text wherever an epic, issue or mission is blocked — never color alone.
+  static const IconData blocked = Icons.block_rounded;
+
   /// Paired with relative-time text (`RelativeMoment`) wherever data is
   /// marked stale — never color alone.
   static const IconData stale = Icons.schedule_outlined;

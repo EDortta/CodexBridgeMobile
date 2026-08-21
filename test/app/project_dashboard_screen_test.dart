@@ -5,6 +5,7 @@ import 'package:codex_bridge_mobile/core/format/relative_moment.dart';
 import 'package:codex_bridge_mobile/core/gateway/gateway_context.dart';
 import 'package:codex_bridge_mobile/core/gateway/gateway_context_provider.dart';
 import 'package:codex_bridge_mobile/features/decisions/presentation/decisions_screen.dart';
+import 'package:codex_bridge_mobile/features/issues/presentation/issues_screen.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session_explanation.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session_log_entry.dart';
@@ -165,6 +166,22 @@ void main() {
             .widget<MissionDetailScreen>(find.byType(MissionDetailScreen))
             .missionId,
         'mobile-foundation',
+      );
+    },
+  );
+
+  testWidgets(
+    "tapping the Priority issues header opens the project's own Issues "
+    'browser (#29), not just an unscoped list',
+    (WidgetTester tester) async {
+      await pumpDashboard(tester, 'codex-bridge-mobile');
+
+      await tester.tap(find.text('Priority issues'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<IssuesScreen>(find.byType(IssuesScreen)).projectId,
+        'codex-bridge-mobile',
       );
     },
   );

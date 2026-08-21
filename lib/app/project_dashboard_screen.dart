@@ -443,6 +443,16 @@ class _PriorityIssuesCard extends ConsumerWidget {
     return _SectionCard(
       icon: AppIcons.issues,
       title: 'Priority issues',
+      // Carries `?issues=<id>` into #29's full Issues browser for this
+      // project — the same "carry the id, not just the destination"
+      // reasoning `_CurrentMissionCard.onTap` (#28) already applies to its
+      // own header tap target.
+      onHeaderTap: () => context.go(
+        Uri(
+          path: AppDestination.projects.detailPath,
+          queryParameters: <String, String>{'issues': projectId},
+        ).toString(),
+      ),
       child: value.when(
         loading: () => const _SectionLoading(),
         error: (Object _, StackTrace _) =>
