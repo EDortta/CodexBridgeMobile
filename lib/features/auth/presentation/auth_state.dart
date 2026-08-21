@@ -17,6 +17,7 @@ final class SignedOut extends AuthState {
     this.failure,
     this.sessionMayRemainOnDevice = false,
     this.signingIn = false,
+    this.serverSessionMayRemainActive = false,
   });
 
   /// The wording for [sessionMayRemainOnDevice], kept beside the flag rather
@@ -24,6 +25,13 @@ final class SignedOut extends AuthState {
   static const String sessionMayRemainMessage =
       'This device could not remove the stored session, so it may still be '
       'here the next time the app opens. Remove it again to be sure.';
+
+  /// The wording for [serverSessionMayRemainActive], kept beside the flag for
+  /// the same reason as [sessionMayRemainMessage].
+  static const String serverSessionMayRemainActiveMessage =
+      'This device could not confirm the session was ended on the server. It '
+      'will still expire on its own, but until then it may still work '
+      'elsewhere.';
 
   /// How the device arrived here — shown as the screen's explanation.
   final SignedOutReason reason;
@@ -45,6 +53,22 @@ final class SignedOut extends AuthState {
 
   /// A sign-in is in flight.
   final bool signingIn;
+
+  /// A `signOut` call asked the server to end this device's grant and did not
+  /// get a confirmation back — a rejected token, an unreachable gateway, a
+  /// timeout.
+  ///
+  /// A fourth slot rather than reusing [sessionMayRemainOnDevice]: what is
+  /// still on *this device* and what is still valid *at the server* are
+  /// different facts, checked by different calls, and can disagree in either
+  /// direction (`#53`). `false` here covers both "the server confirmed it"
+  /// and "there was nothing to ask the server about" — arriving through
+  /// [SessionController.build]'s restore path (an expired session, or one a
+  /// failed renewal gave up on) reports `false` for the second reason, not
+  /// the first: those two paths do not call the server either, the same gap
+  /// `signOut` had before `#53`, tracked but not closed by it
+  /// (`docs/architecture/security-threat-model.md` R11).
+  final bool serverSessionMayRemainActive;
 }
 
 /// A session is held, and it is usable.

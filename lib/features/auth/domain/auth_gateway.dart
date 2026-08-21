@@ -12,11 +12,12 @@ import 'session.dart';
 /// true. [renew] took no such correction, so only [HttpAuthGateway] in `data/`,
 /// the controller call site and the sign-in screen moved.
 ///
-/// **Neither method throws.** A refused credential, an unreachable server and a
-/// closed refresh window are all [AuthDenied] values, because the caller of a
-/// sign-in has to *render* the refusal, not catch it. The promise is stated
-/// here so every implementation is held to it, at every entry point
-/// (`design-standards.md` §6).
+/// **None of these methods throw.** A refused credential, an unreachable
+/// server and a closed refresh window are all [AuthDenied] values, and a
+/// failed [revoke] is a `false`, because every caller here is a fire-and-forget
+/// tap handler that reports through provider state, not through a caught
+/// exception. The promise is stated here so every implementation is held to
+/// it, at every entry point (`design-standards.md` §6).
 abstract interface class AuthGateway {
   /// Exchanges an operator credential for a session.
   ///
@@ -42,6 +43,16 @@ abstract interface class AuthGateway {
   /// session must come back carrying an identity, and the identity is the
   /// server's to confirm.
   Future<AuthOutcome> renew(Session session);
+
+  /// Ends [session]'s grant on the server, now rather than at its natural
+  /// expiry.
+  ///
+  /// Called by `SessionController.signOut` alongside the local keystore clear
+  /// (`#53`): local sign-out completes on this device regardless of what this
+  /// returns — the return value is advisory, folded into the operator-facing
+  /// state rather than gating anything. `false` covers every way the server
+  /// did not confirm it: a rejected token, an unreachable gateway, a timeout.
+  Future<bool> revoke(Session session);
 }
 
 /// Outcome of a sign-in or a renewal.

@@ -67,6 +67,11 @@ class MockAuthGateway implements AuthGateway {
     );
   }
 
+  @override
+  Future<bool> revoke(Session session) async => true;
+  // Nothing to confirm with a server: this gateway never minted a real grant,
+  // so there is no `false` this mock could ever honestly return.
+
   Session _sessionAt(DateTime now, {required DateTime refreshExpiresAt}) {
     final String issued = now.toUtc().toIso8601String();
     return Session(
