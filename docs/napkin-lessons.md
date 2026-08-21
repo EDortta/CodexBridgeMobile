@@ -175,6 +175,44 @@
   não que o upstream não tenha resolvido. E comparar `wc -l` das duas: divergência
   de tamanho é o sinal mais barato de cópia velha.
 
+- [2026-08-21] WK-20260821-gh-29-build-epics-and-issues-browser - A precautionary
+  `git bundle` sent directly to the operator via chat UI (after `git push` failed
+  403/404) was unrecoverable the next session: the operator had "no idea" where it
+  went, and a filesystem search (Downloads, `/tmp`, scratchpad, the whole repo tree)
+  found nothing. The 5 commits, 41 tests, and clean `analyze`/`test` run that
+  session reported were real work, genuinely lost — not recoverable by searching
+  harder, only by redoing the issue. Separately, that same session's leftover code
+  (`lib/features/planning/`, untracked in the main checkout) carried a doc comment
+  claiming CodexBridge #8 was "merged... confirmed 2026-08-20" — `gh issue view 8
+  -R EDortta/CodexBridge` this session shows it **open, unimplemented**. The
+  recovery task's own briefing repeated the same false claim secondhand.
+- Action next time: A bundle or patch meant to survive session loss must land
+  somewhere durable and *nameable in the handoff* — a path under the repo's own
+  worktree, or a location the operator confirms receiving before the session ends
+  — never "sent via chat" as the only copy. And when picking up any claim a prior
+  session made about an *external* repo's state ("X is merged", "Y is closed"),
+  re-verify it with `gh issue view`/`gh pr list` against that repo directly before
+  writing it into a new doc or comment — a stale claim from one session is exactly
+  the kind of thing that propagates silently into the next (see also the 2026-08-19
+  Epic-numbering lesson above: verify from the source, not from memory of a prior
+  session's summary).
+- [2026-08-21] WK-20260821-gh-29-build-epics-and-issues-browser - This session's
+  own git worktree started 201 files behind `origin/development` (a stale
+  `worktree-agent-*` base branch, unrelated to the main checkout) — `ls
+  lib/features` inside it showed only 5 directories where `development` actually
+  has 10, including a `lib/features/issues/` this session would otherwise have
+  missed: a small, already-wired `ProjectIssue{priority}` feature powering
+  `_PriorityIssuesCard` on #24's dashboard, easy to mistake for something #29
+  needed to create from scratch (the untracked `lib/features/planning/` leftover
+  in the main checkout looked like exactly that self-contained new feature).
+- Action next time: Before trusting a worktree's checked-out files as "current",
+  compare against the real base: `git rev-parse <worktree-branch> <base-ref>` and,
+  if they differ, `git ls-tree -r --name-only <base-ref> | grep '^lib/features/'`
+  (or recreate the branch fresh off the base, as this session did) rather than
+  reading `lib/` off disk. A directory name close to the issue's own vocabulary
+  ("issues" for an issues browser) is the first place to look for something to
+  extend, and extending it beats a second, competing concept two commits later.
+
 Short, practical lessons captured at session close.
 Keep each lesson concise and actionable.
 

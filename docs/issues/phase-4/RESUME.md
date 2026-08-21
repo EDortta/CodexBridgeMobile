@@ -232,16 +232,7 @@ race, just triggered directly rather than through two real taps.
 
 ## Next Step (DO THIS FIRST)
 
-**Operator review is next, not more implementation.** #28 — now with a
-real reviewer pass and a completed council round 1, both closed — is
-committed locally on `feature/gh-28/mission-detail-timeline-and-controls`
-but still not merged, pushed, or closed: this session's standing
-instructions require stopping before any of those regardless of review
-outcome. Review the diff and, if acceptable, direct the merge/push/close
-the same way #21-#27 were closed (`--no-ff` merge to `development`, push,
-close #28 on GitHub referencing the commit), then update this file.
-Separately: confirm whether the overnight routine
-(`trig_01Mepr68impzTrGjDvzmnJRk`) is still armed and worth relying on, or
-should be re-armed/rebuilt, before scheduling another unattended run. #29
-— Build Epics and Issues browser (Epic #6) is next in sequence once #28 is
-merged and the operator authorizes starting it.
+**Phase 4 is closed.** #28 merged into `development` at `b0ac4a1` (confirmed
+2026-08-21 by `git log`). Phase 5 (`docs/issues/phase-5/`) now owns #29 —
+see `docs/issues/phase-5/RESUME.md` for its own Next Step. This file is kept
+only as history; do not resume work from here.

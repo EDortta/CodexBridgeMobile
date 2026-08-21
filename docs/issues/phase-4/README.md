@@ -14,7 +14,7 @@ detail+actions shape #25/#26 just proved out — see
 ## Issues
 
 - [#27 — Build missions list and lifecycle model](https://github.com/EDortta/CodexBridgeMobile/issues/27) — size M, **finished and closed**. Commit `6a37230`, merged `f30cec5`. See `issues/27-missions-list-and-lifecycle-model.md`.
-- [#28 — Implement mission detail, timeline and controls](https://github.com/EDortta/CodexBridgeMobile/issues/28) — size L, **finished, pending operator review/merge**. Branch `feature/gh-28/mission-detail-timeline-and-controls`. See `issues/28-implement-mission-detail-timeline-and-controls.md`.
+- [#28 — Implement mission detail, timeline and controls](https://github.com/EDortta/CodexBridgeMobile/issues/28) — size L, **finished and merged** into `development` (`b0ac4a1`, confirmed 2026-08-21). See `issues/28-implement-mission-detail-timeline-and-controls.md`.
 
 ## External dependency: the backend API contract
 
