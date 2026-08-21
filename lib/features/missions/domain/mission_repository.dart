@@ -1,4 +1,5 @@
 import 'mission.dart';
+import 'mission_explanation.dart';
 
 /// Thrown when a mission id has no matching record.
 class MissionNotFoundException implements Exception {
@@ -45,4 +46,24 @@ abstract interface class MissionRepository {
   /// reason for an irreversible action. Throws
   /// [MissionControlNotAllowedException] unless [Mission.canCancel].
   Future<Mission> cancel(String missionId, {required String reason});
+
+  /// The server's own account of why [missionId] is in its current state —
+  /// mirrors [Mission.explanation], but assembled remotely rather than
+  /// computed from fields already on the client (see
+  /// [MissionExplanation]'s own doc comment for how the two differ). Throws
+  /// [MissionNotFoundException] if [missionId] does not exist.
+  Future<MissionExplanation> explain(String missionId);
+}
+
+/// Thrown by a remote [MissionRepository] for a transport, authentication or
+/// response-shape failure that is not one of [MissionNotFoundException] /
+/// [MissionControlNotAllowedException]'s more specific meanings. Mirrors
+/// `LiveSessionRepositoryException`.
+class MissionRepositoryException implements Exception {
+  const MissionRepositoryException(this.message);
+
+  final String message;
+
+  @override
+  String toString() => message;
 }

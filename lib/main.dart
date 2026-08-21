@@ -5,7 +5,10 @@ import 'app/app.dart';
 import 'app/app_router.dart';
 import 'app/auth_gateway_binding.dart';
 import 'app/conversation_repository_binding.dart';
+import 'app/decision_repository_binding.dart';
 import 'app/gateway_context_binding.dart';
+import 'app/mission_repository_binding.dart';
+import 'app/project_repository_binding.dart';
 
 /// Process entry point.
 ///
@@ -18,6 +21,9 @@ void main() => runApp(
       authGatewayBinding,
       gatewayContextBinding,
       conversationRepositoryBinding,
+      missionRepositoryBinding,
+      projectRepositoryBinding,
+      decisionRepositoryBinding,
     ],
     child: CodexBridgeMobileApp(router: createAppRouter()),
   ),

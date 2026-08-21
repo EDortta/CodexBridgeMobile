@@ -1,4 +1,6 @@
 import 'package:codex_bridge_mobile/core/design/app_theme.dart';
+import 'package:codex_bridge_mobile/core/gateway/gateway_context.dart';
+import 'package:codex_bridge_mobile/core/gateway/gateway_context_provider.dart';
 import 'package:codex_bridge_mobile/core/storage/secure_storage_providers.dart';
 import 'package:codex_bridge_mobile/features/projects/domain/project_health.dart';
 import 'package:codex_bridge_mobile/features/projects/domain/project_repository.dart';
@@ -48,6 +50,12 @@ void main() {
     await tester.pumpWidget(
       ProviderScope(
         overrides: <Override>[
+          gatewayContextProvider.overrideWith(
+            (Ref ref) async => GatewayContext(
+              server: Uri.parse('https://bridge.example.com'),
+              accessToken: 'access-token',
+            ),
+          ),
           projectRepositoryProvider.overrideWithValue(
             _FakeProjectRepository(projects),
           ),
@@ -208,6 +216,22 @@ class _FakeProjectRepository implements ProjectRepository {
   final List<ProjectSummary> projects;
 
   @override
-  Future<List<ProjectSummary>> loadProjects() =>
-      Future<List<ProjectSummary>>.value(projects);
+  Future<List<ProjectSummary>> loadProjects({
+    required Uri server,
+    required String accessToken,
+  }) => Future<List<ProjectSummary>>.value(projects);
+
+  @override
+  Future<ProjectSummary?> loadProject({
+    required Uri server,
+    required String accessToken,
+    required String id,
+  }) {
+    for (final ProjectSummary summary in projects) {
+      if (summary.id == id) {
+        return Future<ProjectSummary?>.value(summary);
+      }
+    }
+    return Future<ProjectSummary?>.value();
+  }
 }
