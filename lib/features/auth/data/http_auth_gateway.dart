@@ -181,19 +181,19 @@ class HttpAuthGateway implements AuthGateway {
   /// Ends [session]'s grant on the server, now rather than at its natural
   /// expiry, by calling `POST /api/v1/auth/revoke`.
   ///
-  /// **Not called by [SessionController.signOut] as of this change.** That
-  /// method's sign-out path is the most race-hardened part of this feature
-  /// (`design-standards.md` §3 — three separate generation checks exist there
-  /// solely to stop a renewal from resurrecting a session the operator just
-  /// removed); giving it a network call needs its own pass over exactly that
-  /// kind of interleaving, which this change does not attempt. Until a
-  /// follow-up does, "sign out" in this app clears the token from the device
-  /// only — the server-side grant lives out its own TTL. Named here and in the
-  /// PR that introduces this file rather than left to be rediscovered.
+  /// Called by `SessionController.signOut` alongside the local keystore clear
+  /// (`#53`). That method's sign-out path is the most race-hardened part of
+  /// this feature (`design-standards.md` §3 — three separate generation
+  /// checks exist there solely to stop a renewal from resurrecting a session
+  /// the operator just removed); this call sits entirely inside the network
+  /// leg of that path and never itself writes state, so none of those checks
+  /// change shape here.
   ///
   /// Returns whether the server confirmed the revocation. Never throws: a
-  /// revoke that fails is not worth blocking a local sign-out over, so a
-  /// caller that does wire this in can treat the return value as advisory.
+  /// revoke that fails is not worth blocking a local sign-out over, so the
+  /// caller treats the return value as advisory, not as a signal to retry or
+  /// escalate.
+  @override
   Future<bool> revoke(Session session) async {
     final Uri? server = await resolveServer();
     if (server == null) {

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/storage/secure_storage_providers.dart';
@@ -47,6 +49,22 @@ class SessionController extends AsyncNotifier<AuthState> {
   /// sign-out findings).
   int _signOutGeneration = 0;
 
+  /// The in-flight server revoke, when one is running.
+  ///
+  /// [signOut] is deliberately reachable more than once over the same held
+  /// session — the "Remove from this device" retry is exactly that — and
+  /// without this, two calls landing before either's network leg resolves
+  /// would each fire their own `POST /api/v1/auth/revoke` for the same
+  /// session. Harmless to the server (revoking twice is idempotent there) but
+  /// not to the operator-facing state: whichever request the server answered
+  /// second could report a token the first request already got confirmed as
+  /// gone, re-raising [SignedOut.serverSessionMayRemainActive] over a session
+  /// that in fact was revoked. Memoizing the call, not the *result*, means a
+  /// later, genuinely new sign-out (a fresh sign-in followed by another
+  /// sign-out) still fires its own request — this is cleared the moment the
+  /// call it is tracking finishes.
+  Future<bool>? _pendingRevoke;
+
   @override
   Future<AuthState> build() async {
     final Session? stored = await ref.watch(sessionStoreProvider).readSession();
@@ -79,17 +97,21 @@ class SessionController extends AsyncNotifier<AuthState> {
     if (state.valueOrNull case SignedOut(
       :final SignedOutReason reason,
       :final bool sessionMayRemainOnDevice,
+      :final bool serverSessionMayRemainActive,
       signingIn: false,
     )) {
-      // `sessionMayRemainOnDevice` is carried through both rebuilds below.
-      // Rebuilding without it re-reports a clean device on a keystore that
-      // refused the delete, and the retry button is the only in-app way to
-      // remove what is still there: a refused sign-in would take away the
-      // affordance and leave the tokens.
+      // `sessionMayRemainOnDevice` and `serverSessionMayRemainActive` are
+      // carried through both rebuilds below. Rebuilding without them
+      // re-reports a clean device — locally, or at the server — on a removal
+      // that refused, and the only in-app trace of that refusal is these two
+      // flags; a refused sign-in would erase whichever one this rebuild
+      // dropped, with no warning left on screen to say a token might still
+      // be live somewhere (`#53`).
       state = AsyncData<AuthState>(
         SignedOut(
           reason: reason,
           sessionMayRemainOnDevice: sessionMayRemainOnDevice,
+          serverSessionMayRemainActive: serverSessionMayRemainActive,
           signingIn: true,
         ),
       );
@@ -118,6 +140,14 @@ class SessionController extends AsyncNotifier<AuthState> {
             sessionMayRemainOnDevice: _currentSessionMayRemainOnDevice(
               orElse: sessionMayRemainOnDevice,
             ),
+            // Carried forward for the same reason `sessionMayRemainOnDevice`
+            // is, right above: a sign-out's failed revoke can still be
+            // unresolved when a sign-in attempt over it is refused, and a
+            // rebuild that drops the flag here would silently retire a
+            // warning about a server grant nothing has actually confirmed
+            // is gone (`#53`, the same shape as the council round-2 finding
+            // this file already carries for the device-local flag).
+            serverSessionMayRemainActive: _currentServerSessionMayRemainActive(),
           ),
         },
       );
@@ -182,7 +212,8 @@ class SessionController extends AsyncNotifier<AuthState> {
     }
   }
 
-  /// Signs out, clearing the local session state.
+  /// Signs out: ends the grant at the server, then clears the local session
+  /// state (`#53`).
   ///
   /// Deliberately callable while already signed out: when a previous removal
   /// was refused by the keystore, this is the retry, and a guard here would
@@ -206,7 +237,65 @@ class SessionController extends AsyncNotifier<AuthState> {
       SignedOut(:final SignedOutReason reason) => reason,
       _ => SignedOutReason.signedOut,
     };
-    state = AsyncData<AuthState>(await _revoke(reason));
+
+    // Ends the server-side grant, alongside the local clear `_revoke` below
+    // performs (`#53`). Only attempted when this call is the one holding an
+    // actual session to send — a retry of a refused local removal (`current`
+    // already `SignedOut`) has no session left in state, and the original
+    // call that made this a retry already asked the server once; carrying
+    // the prior verdict forward is what keeps that first answer from being
+    // silently dropped on the retry (`_currentServerSessionMayRemainActive`).
+    //
+    // Awaited ahead of the local clear, not raced against it, and never
+    // wrapped in a try/catch: `AuthGateway.revoke` is documented to never
+    // throw and to resolve inside its own bounded timeout, so this await can
+    // only ever produce an outcome — it cannot strand the operator mid
+    // sign-out, and its outcome does not gate what follows. That is the
+    // fail-open half of this method; the local clear right after it is the
+    // fail-closed half, and the two are independent on purpose
+    // (`design-standards.md` §6).
+    final bool serverSessionMayRemainActive = switch (current) {
+      SignedIn(:final Session session) => !await _revokeRemotely(session),
+      _ => _currentServerSessionMayRemainActive(),
+    };
+
+    state = AsyncData<AuthState>(
+      await _revoke(
+        reason,
+        serverSessionMayRemainActive: serverSessionMayRemainActive,
+      ),
+    );
+  }
+
+  /// The current [SignedOut.serverSessionMayRemainActive], or `false` when
+  /// the state moved on to something that does not carry the flag at all —
+  /// the same shape as [_currentSigningIn], for the same reason: a value
+  /// carried across a rebuild has to be read fresh, not captured before an
+  /// await that something else could resolve first.
+  bool _currentServerSessionMayRemainActive() => switch (state.valueOrNull) {
+    SignedOut(:final bool serverSessionMayRemainActive) =>
+      serverSessionMayRemainActive,
+    _ => false,
+  };
+
+  /// Calls [AuthGateway.revoke] for [session], collapsing any call that lands
+  /// while one is already running onto the same in-flight request rather than
+  /// firing a second one (see [_pendingRevoke]).
+  Future<bool> _revokeRemotely(Session session) {
+    final Future<bool>? pending = _pendingRevoke;
+    if (pending != null) {
+      return pending;
+    }
+    final Future<bool> started = ref.read(authGatewayProvider).revoke(session);
+    _pendingRevoke = started;
+    unawaited(
+      started.whenComplete(() {
+        if (identical(_pendingRevoke, started)) {
+          _pendingRevoke = null;
+        }
+      }),
+    );
+    return started;
   }
 
   /// The current [SignedOut.signingIn], or `false` when the state moved on
@@ -297,12 +386,16 @@ class SessionController extends AsyncNotifier<AuthState> {
   /// token on disk while the app believes it is signed out — and when the
   /// keystore refuses, the state says so instead of the removal failing
   /// silently.
-  Future<AuthState> _revoke(SignedOutReason reason) async {
+  Future<AuthState> _revoke(
+    SignedOutReason reason, {
+    bool serverSessionMayRemainActive = false,
+  }) async {
     final bool removed = await _clearStoredSession();
     return SignedOut(
       reason: reason,
       sessionMayRemainOnDevice: !removed,
       signingIn: _currentSigningIn(),
+      serverSessionMayRemainActive: serverSessionMayRemainActive,
     );
   }
 

@@ -586,6 +586,205 @@ void main() {
       );
     });
 
+    group('revoking the server-side grant (#53)', () {
+      test('sign-out asks the server to end the grant it is leaving', () async {
+        final _FakeAuthGateway gateway = _FakeAuthGateway();
+        final Session stored = sessionWith(expiresIn: const Duration(hours: 1));
+        final result = containerWith(stored: stored, gateway: gateway);
+        await stateOf(result.container);
+
+        await result.container.read(sessionProvider.notifier).signOut();
+
+        expect(
+          gateway.revokedSessions.map((Session s) => s.accessToken),
+          <String>[stored.accessToken],
+          reason: 'the session that was signed out of was never sent to the '
+              'server to end',
+        );
+        final SignedOut state =
+            result.container.read(sessionProvider).value! as SignedOut;
+        expect(
+          state.serverSessionMayRemainActive,
+          isFalse,
+          reason: 'the server confirmed the revoke; nothing to warn about',
+        );
+      });
+
+      test(
+        'a revoke the server refuses still completes the local sign-out, '
+        'and says so',
+        () async {
+          final _FakeAuthGateway gateway = _FakeAuthGateway(
+            revokeOutcome: false,
+          );
+          final result = containerWith(
+            stored: sessionWith(expiresIn: const Duration(hours: 1)),
+            gateway: gateway,
+          );
+          await stateOf(result.container);
+
+          await result.container.read(sessionProvider.notifier).signOut();
+
+          final SignedOut state =
+              result.container.read(sessionProvider).value! as SignedOut;
+          expect(
+            result.storage.entries,
+            isEmpty,
+            reason:
+                'a server that refused the revoke blocked the local sign-out '
+                'from completing — the network call must fail open',
+          );
+          expect(state.reason, SignedOutReason.signedOut);
+          expect(
+            state.serverSessionMayRemainActive,
+            isTrue,
+            reason: 'the refused revoke disappeared silently',
+          );
+        },
+      );
+
+      test(
+        'two sign-outs landing before the network reply collapse onto one '
+        'revoke request',
+        () async {
+          final Completer<bool> outcome = Completer<bool>();
+          final _SequencedRevokeGateway gateway = _SequencedRevokeGateway(
+            <Completer<bool>>[outcome],
+          );
+          final result = containerWith(
+            stored: sessionWith(expiresIn: const Duration(hours: 1)),
+            gateway: gateway,
+          );
+          await stateOf(result.container);
+          final SessionController notifier = result.container.read(
+            sessionProvider.notifier,
+          );
+
+          final Future<void> first = notifier.signOut();
+          final Future<void> second = notifier.signOut();
+
+          outcome.complete(true);
+          await first;
+          await second;
+
+          expect(
+            gateway.calls,
+            1,
+            reason:
+                'a sign-out landing while another was already revoking the '
+                'same session fired a second request for it',
+          );
+          final SignedOut state =
+              result.container.read(sessionProvider).value! as SignedOut;
+          expect(state.serverSessionMayRemainActive, isFalse);
+        },
+      );
+
+      test(
+        'retrying a refused local removal does not ask the server again',
+        () async {
+          final _FakeAuthGateway gateway = _FakeAuthGateway();
+          final result = containerWith(
+            stored: sessionWith(expiresIn: const Duration(hours: 1)),
+            gateway: gateway,
+            keystore: DeleteRefusingSecureKeyValueStore.new,
+          );
+          await stateOf(result.container);
+
+          await result.container.read(sessionProvider.notifier).signOut();
+          expect(
+            (result.container.read(sessionProvider).value! as SignedOut)
+                .sessionMayRemainOnDevice,
+            isTrue,
+            reason: 'the fake refused the delete; the removal really failed',
+          );
+          await result.container.read(sessionProvider.notifier).signOut();
+
+          expect(
+            gateway.revokedSessions.length,
+            1,
+            reason:
+                'the retry is for the keystore delete only — the state no '
+                'longer holds a session to send, and the original call '
+                'already asked the server once',
+          );
+        },
+      );
+
+      test(
+        'a failed revoke survives a retry of the local removal',
+        () async {
+          final _FakeAuthGateway gateway = _FakeAuthGateway(
+            revokeOutcome: false,
+          );
+          final result = containerWith(
+            stored: sessionWith(expiresIn: const Duration(hours: 1)),
+            gateway: gateway,
+            keystore: DeleteRefusingSecureKeyValueStore.new,
+          );
+          await stateOf(result.container);
+
+          await result.container.read(sessionProvider.notifier).signOut();
+          await result.container.read(sessionProvider.notifier).signOut();
+
+          final SignedOut state =
+              result.container.read(sessionProvider).value! as SignedOut;
+          expect(
+            state.serverSessionMayRemainActive,
+            isTrue,
+            reason:
+                "the first call's refused revoke was dropped by the retry, "
+                'which never asks the server again',
+          );
+        },
+      );
+
+      test(
+        'a sign-in refused after a failed revoke keeps reporting it',
+        () async {
+          // The mirror of the `sessionMayRemainOnDevice` council-round-2
+          // finding, for the server-side flag: `signIn`'s denial branch must
+          // not drop a warning about a grant nothing has confirmed is gone.
+          final Completer<AuthOutcome> signInOutcome =
+              Completer<AuthOutcome>();
+          final _SequencedThenDeniedGateway gateway =
+              _SequencedThenDeniedGateway(signInOutcome);
+          final result = containerWith(
+            stored: sessionWith(expiresIn: const Duration(hours: 1)),
+            gateway: gateway,
+          );
+          await stateOf(result.container);
+          final SessionController notifier = result.container.read(
+            sessionProvider.notifier,
+          );
+
+          await notifier.signOut();
+          expect(
+            (result.container.read(sessionProvider).value! as SignedOut)
+                .serverSessionMayRemainActive,
+            isTrue,
+          );
+
+          final Future<void> signingIn = notifier.signIn(
+            username: 'operator',
+            password: 'wrong-code',
+          );
+          signInOutcome.complete(
+            const AuthDenied(AuthFailure.rejectedCredential),
+          );
+          await signingIn;
+
+          expect(
+            (result.container.read(sessionProvider).value! as SignedOut)
+                .serverSessionMayRemainActive,
+            isTrue,
+            reason:
+                'a refused sign-in over the failed revoke silently cleared '
+                'the warning',
+          );
+        },
+      );
+    });
   });
 
   group('a keystore that refuses is reported, never dropped', () {
@@ -1183,6 +1382,9 @@ class _SequencedAuthGateway implements AuthGateway {
 
   @override
   Future<AuthOutcome> renew(Session session) => throw UnimplementedError();
+
+  @override
+  Future<bool> revoke(Session session) => throw UnimplementedError();
 }
 
 /// Gateway whose renewal replies resolve on the test's own schedule, one
@@ -1210,6 +1412,13 @@ class _SequencedRenewalGateway implements AuthGateway {
 
   @override
   Future<AuthOutcome> renew(Session session) => _outcomes[_calls++].future;
+
+  // A sign-out landing on a session this gateway granted is exercised by
+  // these tests (the renewal-vs-sign-out races), but the revoke it now
+  // triggers is not what any of them are about — a session's worth of
+  // trust, not a network reply, is reasonable here.
+  @override
+  Future<bool> revoke(Session session) async => true;
 }
 
 /// Gateway whose every outcome is chosen by the test.
@@ -1217,13 +1426,15 @@ class _SequencedRenewalGateway implements AuthGateway {
 /// Records what it was asked, so a test can assert the credential reached it
 /// and that a renewal did *not* happen when it should not have.
 class _FakeAuthGateway implements AuthGateway {
-  _FakeAuthGateway({this.signInOutcome, this.renewOutcome});
+  _FakeAuthGateway({this.signInOutcome, this.renewOutcome, this.revokeOutcome = true});
 
   final AuthOutcome? signInOutcome;
   final AuthOutcome? renewOutcome;
+  final bool revokeOutcome;
 
   final List<String> codes = <String>[];
   int renewals = 0;
+  final List<Session> revokedSessions = <Session>[];
 
   @override
   Future<AuthOutcome> signIn({
@@ -1240,6 +1451,12 @@ class _FakeAuthGateway implements AuthGateway {
     return renewOutcome ?? AuthGranted(_granted('renewed-access-token'));
   }
 
+  @override
+  Future<bool> revoke(Session session) async {
+    revokedSessions.add(session);
+    return revokeOutcome;
+  }
+
   Session _granted(String accessToken) => Session(
     accessToken: accessToken,
     refreshToken: 'granted-refresh-token',
@@ -1248,4 +1465,52 @@ class _FakeAuthGateway implements AuthGateway {
     operatorId: 'operator-1',
     operatorName: 'Operator One',
   );
+}
+
+/// Gateway whose revoke replies resolve on the test's own schedule, one
+/// [Completer] per call in call order — built to prove two `signOut` calls
+/// landing before either's network leg resolves collapse onto a single
+/// `revoke` request (`SessionController._pendingRevoke`).
+class _SequencedRevokeGateway implements AuthGateway {
+  _SequencedRevokeGateway(this._outcomes);
+
+  final List<Completer<bool>> _outcomes;
+  int _calls = 0;
+
+  /// How many revokes actually reached the gateway.
+  int get calls => _calls;
+
+  @override
+  Future<AuthOutcome> signIn({
+    required String username,
+    required String password,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<AuthOutcome> renew(Session session) => throw UnimplementedError();
+
+  @override
+  Future<bool> revoke(Session session) => _outcomes[_calls++].future;
+}
+
+/// A gateway whose `revoke` always refuses and whose `signIn` resolves on
+/// the test's own schedule — built for the one test that needs both: a
+/// sign-out whose revoke fails, followed by a sign-in the test controls the
+/// timing of.
+class _SequencedThenDeniedGateway implements AuthGateway {
+  _SequencedThenDeniedGateway(this._signInOutcome);
+
+  final Completer<AuthOutcome> _signInOutcome;
+
+  @override
+  Future<AuthOutcome> signIn({
+    required String username,
+    required String password,
+  }) => _signInOutcome.future;
+
+  @override
+  Future<AuthOutcome> renew(Session session) => throw UnimplementedError();
+
+  @override
+  Future<bool> revoke(Session session) async => false;
 }

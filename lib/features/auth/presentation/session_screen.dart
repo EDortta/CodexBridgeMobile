@@ -86,11 +86,21 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
         ),
         if (state.sessionMayRemainOnDevice) ...<Widget>[
           const SizedBox(height: AppSpacing.md),
-          _StorageWarning(
+          _Warning(
             message: SignedOut.sessionMayRemainMessage,
+            retryLabel: 'Remove from this device',
             onRetry: () =>
                 unawaited(ref.read(sessionProvider.notifier).signOut()),
           ),
+        ],
+        if (state.serverSessionMayRemainActive) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          // No retry action: `signOut` already asked the server once for this
+          // session and does not hold a session object to ask again with
+          // (`SessionController._pendingRevoke`'s doc). The device-local
+          // warning above has a retry because the keystore is this device's
+          // own to keep trying; this one is not.
+          const _Warning(message: SignedOut.serverSessionMayRemainActiveMessage),
         ],
         const SizedBox(height: AppSpacing.md),
         TextField(
@@ -147,16 +157,26 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
   }
 }
 
-/// What the device could not do to its own keystore, and the way to try again.
+/// What `signOut` could not confirm, and — when there is one — the way to
+/// try again.
 ///
-/// A warning with no action is a dead end: the removal that failed is the same
-/// removal [SessionController.signOut] performs, so the retry is one tap rather
-/// than a sign-in the operator may not have a code for.
-class _StorageWarning extends StatelessWidget {
-  const _StorageWarning({required this.message, required this.onRetry});
+/// A warning with no action is a dead end, so [onRetry] is offered wherever
+/// there is a retry that could actually change the outcome
+/// ([SignedOut.sessionMayRemainOnDevice]'s "Remove from this device" is the
+/// same removal [SessionController.signOut] performs). Where there is not
+/// ([SignedOut.serverSessionMayRemainActive]), [onRetry] is left `null` and
+/// the warning stands alone rather than offering a button wired to nothing.
+class _Warning extends StatelessWidget {
+  const _Warning({required this.message, this.onRetry, this.retryLabel})
+    : assert(
+        (onRetry == null) == (retryLabel == null),
+        'a retry action needs its label, and a label with no action is a '
+        'button that does nothing',
+      );
 
   final String message;
-  final VoidCallback onRetry;
+  final VoidCallback? onRetry;
+  final String? retryLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -180,11 +200,10 @@ class _StorageWarning extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: AppSpacing.sm),
-        OutlinedButton(
-          onPressed: onRetry,
-          child: const Text('Remove from this device'),
-        ),
+        if (onRetry != null) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          OutlinedButton(onPressed: onRetry, child: Text(retryLabel!)),
+        ],
       ],
     );
   }

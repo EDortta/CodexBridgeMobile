@@ -41,4 +41,11 @@ of this folder sees the list without re-reading the full threat model:
   before Epic #12 adds a local cache.
 - R11 (three items): biometric gate for critical actions, local data
   minimization policy, remote wipe/revocation — all listed in Epic #14's own
-  scope with no issue filed against any of them.
+  scope with no issue filed against any of them. The revocation third is
+  **partially addressed**: [#53](https://github.com/EDortta/CodexBridgeMobile/issues/53)
+  (filed from a council finding on PR #52, not from this list) wires
+  `SessionController.signOut` to `AuthGateway.revoke`. Still open: the
+  expired-session and failed-renewal paths clear the local keystore without
+  calling the server (out of #53's scope), and there is still no "wipe this
+  device's data" operator action — see `security-threat-model.md` R11 for
+  the current detail.

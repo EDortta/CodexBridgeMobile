@@ -7,6 +7,7 @@ import 'package:codex_bridge_mobile/features/missions/domain/live_session_explan
 import 'package:codex_bridge_mobile/features/missions/domain/live_session_log_entry.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission.dart';
+import 'package:codex_bridge_mobile/features/missions/domain/mission_explanation.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_risk.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_stage.dart';
@@ -208,6 +209,17 @@ class _FakeMissionRepository implements MissionRepository {
   @override
   Future<Mission> cancel(String missionId, {required String reason}) async =>
       missions.firstWhere((Mission m) => m.id == missionId);
+
+  @override
+  Future<MissionExplanation> explain(String missionId) async {
+    final Mission mission = missions.firstWhere((Mission m) => m.id == missionId);
+    return MissionExplanation(
+      missionId: mission.id,
+      state: mission.state.name,
+      reasons: mission.explanation,
+      generatedAt: DateTime.utc(2026, 8, 15, 9),
+    );
+  }
 }
 
 class _FakeSessionsRepository implements LiveSessionRepository {

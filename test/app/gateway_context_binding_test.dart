@@ -131,4 +131,7 @@ class _DelayedRenewalGateway implements AuthGateway {
       ),
     );
   }
+
+  @override
+  Future<bool> revoke(Session session) => throw UnimplementedError();
 }
