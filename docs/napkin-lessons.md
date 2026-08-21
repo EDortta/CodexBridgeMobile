@@ -511,3 +511,61 @@ Questions carried forward:
   every..."), grep the implementation for that exact behavior on both
   before trusting the comment — this is cheap and catches drift a normal
   read-through skims past.
+
+## 2026-08-21 — WK-20260821-http-decision-repository
+
+- The briefing said "get the client's handling of a 409 (stale revision)
+  conflict right" — reading `gateway/app/api/routes/decisions.py` and
+  `concurrency.py` in the CodexBridge repo (not the docs) showed the real
+  split is finer: `concurrency.require_if_match` answers a stale `If-Match`
+  with **412** (RFC 9110 §13.1.1 — the correct code for a failed
+  precondition), and `_resolve`'s own `DECIDABLE` check answers a decision
+  that already left `pending` with **409**. Both mean the same thing to an
+  operator — "this changed since you looked; re-read it and decide again" —
+  so `HttpDecisionRepository` maps both to one `DecisionConflictException`
+  rather than mirroring the two status codes as two client types. Lesson:
+  when a task names a status code from memory or a summary, verify it
+  against the route handler that raises it before writing a test around
+  that number — the real contract had two codes doing what the brief
+  described as one.
+- `DecisionRepository.approve`/`reject`/`requestRevision` carry no revision
+  parameter — unlike `LiveSessionRepository.controlSession`, `Decision` has
+  no `revision` field to cache. Adding one would have reached
+  `decision_providers.dart`, `decision_detail_screen.dart`, and every
+  existing decisions test for a value only the HTTP repository needs. Kept
+  the domain contract untouched instead: each resolve call fetches the
+  current revision first (`GET /api/v1/decisions/{id}`), then sends it back
+  as `If-Match` on the write — the same two-network-call shape
+  `HttpAuthGateway.signIn` already uses (post the grant, then resolve
+  `/auth/me`) for the same reason: a value the caller never had a chance to
+  read is not one it can be asked to pass in.
+- The server's `Decision` DTO (`_decision_dto` in `decisions.py`) is a much
+  flatter shape than the domain `Decision` this app already had a full UI
+  built against (`decision_detail_screen.dart`, from the mock-only #26):
+  no `impactSummary`, `recommendationSummary`, `context`, `riskDetails`,
+  `evidence`, `affectedEntities`, or `discussion` — the contract's own
+  `Decision` schema comment says as much ("no submission path in this build
+  populates them"). Rather than fabricate content for fields the backend
+  itself documents as unpopulated, `HttpDecisionRepository` defaults them
+  empty and leaves the gap visible in the UI (`_ContextCard`/`_DiscussionCard`
+  already render nothing for empty sections). The one exception:
+  `auditTrail` gets one synthesized entry from `rationale`/`decidedAt` when
+  a decision is resolved, so "Resolution history" does not say "No
+  resolution actions yet." next to a state badge that says otherwise — but
+  the resolving actor's identity is not in this response (only who
+  *requested* the decision is), so the entry is honestly labeled `'Unknown
+  actor'` rather than misattributed to the requester. `discuss()` throws:
+  `decisions.py` has no comment/discussion endpoint at all.
+- Every decision this backend serves today is `sensitive`
+  (`decisions.py`'s own module docstring), and the gateway refuses to
+  approve a sensitive decision without an explicit `confirm: true` in the
+  body. `HttpDecisionRepository.approve` sends `confirm: true`
+  unconditionally rather than adding a parameter `DecisionRepository.approve`
+  has no other use for — tapping "Approve" in `DecisionDetailScreen` is
+  already the deliberate act the flag proves happened (a critical decision
+  additionally makes the operator check an acknowledgement box first).
+- Action next time: before implementing a client against "the docs say
+  status X", grep the actual route handler for every `ApiError`/`raise` it
+  can produce and cross-check against the OpenAPI response list — the two
+  can and did disagree in ways that change which exception type a client
+  needs, not just which number a test asserts on.
