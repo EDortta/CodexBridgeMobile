@@ -135,6 +135,40 @@ void main() {
     expect(find.text('Project "does-not-exist" was not found.'), findsOneWidget);
   });
 
+  testWidgets(
+    'a blocked priority issue shows the blocked indicator, not just an icon '
+    'and priority label (council round-1 finding on #51)',
+    (WidgetTester tester) async {
+      // codex-bridge's #1 priority issue (critical) is
+      // `fix-development-build`, seeded as `IssueStatus.blocked` with a real
+      // `blockedReason` in `mock_issue_repository.dart`. Before this fix the
+      // dashboard's `_IssueListTile` rendered only an icon, the title and a
+      // priority label for it — the same issue viewed one tap away through
+      // `issues_screen.dart` (#29) shows a distinct blocked icon + "Blocked"
+      // label, so the dashboard silently dropped the indicator.
+      //
+      // codex-bridge also seeds a second critical+blocked issue
+      // (`issue-migration-collision`), so both the label and the icon are
+      // expected twice — this only asserts the indicator is not dropped,
+      // not this project's exact issue count.
+      await pumpDashboard(tester, 'codex-bridge');
+
+      expect(find.text('Development build fails on the CI runner'), findsOneWidget);
+      expect(find.text('Blocked'), findsNWidgets(2));
+      expect(find.byIcon(AppIcons.blocked), findsNWidgets(2));
+
+      await tester.tap(find.text('Development build fails on the CI runner'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining(
+          'Blocked: Waiting on operator review of the gh-5/6/7/8 integration merge.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('tapping a priority issue opens a dialog with its detail', (
     WidgetTester tester,
   ) async {
