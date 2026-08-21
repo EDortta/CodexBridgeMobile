@@ -443,6 +443,16 @@ class _PriorityIssuesCard extends ConsumerWidget {
     return _SectionCard(
       icon: AppIcons.issues,
       title: 'Priority issues',
+      // Carries `?issues=<id>` into #29's full Issues browser for this
+      // project — the same "carry the id, not just the destination"
+      // reasoning `_CurrentMissionCard.onTap` (#28) already applies to its
+      // own header tap target.
+      onHeaderTap: () => context.go(
+        Uri(
+          path: AppDestination.projects.detailPath,
+          queryParameters: <String, String>{'issues': projectId},
+        ).toString(),
+      ),
       child: value.when(
         loading: () => const _SectionLoading(),
         error: (Object _, StackTrace _) =>
@@ -491,7 +501,9 @@ class _IssueListTile extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final bool urgent =
         issue.priority == IssuePriority.critical || issue.priority == IssuePriority.high;
-    final Color accent = urgent ? theme.colorScheme.error : theme.colorScheme.outline;
+    final Color accent = issue.isBlocked || urgent
+        ? theme.colorScheme.error
+        : theme.colorScheme.outline;
 
     return InkWell(
       borderRadius: AppRadius.card,
@@ -501,14 +513,40 @@ class _IssueListTile extends StatelessWidget {
       ),
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
-        child: Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Icon(AppIcons.issues, size: 16, color: accent),
-            const SizedBox(width: AppSpacing.xxs),
-            Expanded(child: Text(issue.title, style: theme.textTheme.bodyMedium)),
-            Text(
-              issue.priority.label,
-              style: theme.textTheme.labelMedium?.copyWith(color: accent),
+            // Same icon+"Blocked" text pairing `issues_screen.dart`'s
+            // `_IssueCard` uses — this project's own convention
+            // (`project_issue.dart`'s `isBlocked` doc comment) requires the
+            // status be labeled in text, never conveyed by color alone, and
+            // this card previously dropped the indicator entirely.
+            if (issue.isBlocked)
+              Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.xxs),
+                child: Row(
+                  children: <Widget>[
+                    Icon(AppIcons.blocked, size: 14, color: theme.colorScheme.error),
+                    const SizedBox(width: AppSpacing.xxs),
+                    Text(
+                      'Blocked',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.error,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            Row(
+              children: <Widget>[
+                Icon(AppIcons.issues, size: 16, color: accent),
+                const SizedBox(width: AppSpacing.xxs),
+                Expanded(child: Text(issue.title, style: theme.textTheme.bodyMedium)),
+                Text(
+                  issue.priority.label,
+                  style: theme.textTheme.labelMedium?.copyWith(color: accent),
+                ),
+              ],
             ),
           ],
         ),
@@ -527,7 +565,11 @@ class _IssueDialog extends StatelessWidget {
     return AlertDialog(
       title: Text(issue.title),
       content: Text(
-        'Priority: ${issue.priority.label}\nProject: ${issue.projectId}',
+        'Priority: ${issue.priority.label}\nProject: ${issue.projectId}'
+        // Same "label the reason, not just the state" rule the list tile
+        // above now follows — the dialog is this card's own detail view, so
+        // it must not drop the reason the tile only has room to flag.
+        '${issue.isBlocked ? '\nBlocked: ${issue.blockedReason}' : ''}',
       ),
       actions: <Widget>[
         TextButton(

@@ -175,6 +175,44 @@
   não que o upstream não tenha resolvido. E comparar `wc -l` das duas: divergência
   de tamanho é o sinal mais barato de cópia velha.
 
+- [2026-08-21] WK-20260821-gh-29-build-epics-and-issues-browser - A precautionary
+  `git bundle` sent directly to the operator via chat UI (after `git push` failed
+  403/404) was unrecoverable the next session: the operator had "no idea" where it
+  went, and a filesystem search (Downloads, `/tmp`, scratchpad, the whole repo tree)
+  found nothing. The 5 commits, 41 tests, and clean `analyze`/`test` run that
+  session reported were real work, genuinely lost — not recoverable by searching
+  harder, only by redoing the issue. Separately, that same session's leftover code
+  (`lib/features/planning/`, untracked in the main checkout) carried a doc comment
+  claiming CodexBridge #8 was "merged... confirmed 2026-08-20" — `gh issue view 8
+  -R EDortta/CodexBridge` this session shows it **open, unimplemented**. The
+  recovery task's own briefing repeated the same false claim secondhand.
+- Action next time: A bundle or patch meant to survive session loss must land
+  somewhere durable and *nameable in the handoff* — a path under the repo's own
+  worktree, or a location the operator confirms receiving before the session ends
+  — never "sent via chat" as the only copy. And when picking up any claim a prior
+  session made about an *external* repo's state ("X is merged", "Y is closed"),
+  re-verify it with `gh issue view`/`gh pr list` against that repo directly before
+  writing it into a new doc or comment — a stale claim from one session is exactly
+  the kind of thing that propagates silently into the next (see also the 2026-08-19
+  Epic-numbering lesson above: verify from the source, not from memory of a prior
+  session's summary).
+- [2026-08-21] WK-20260821-gh-29-build-epics-and-issues-browser - This session's
+  own git worktree started 201 files behind `origin/development` (a stale
+  `worktree-agent-*` base branch, unrelated to the main checkout) — `ls
+  lib/features` inside it showed only 5 directories where `development` actually
+  has 10, including a `lib/features/issues/` this session would otherwise have
+  missed: a small, already-wired `ProjectIssue{priority}` feature powering
+  `_PriorityIssuesCard` on #24's dashboard, easy to mistake for something #29
+  needed to create from scratch (the untracked `lib/features/planning/` leftover
+  in the main checkout looked like exactly that self-contained new feature).
+- Action next time: Before trusting a worktree's checked-out files as "current",
+  compare against the real base: `git rev-parse <worktree-branch> <base-ref>` and,
+  if they differ, `git ls-tree -r --name-only <base-ref> | grep '^lib/features/'`
+  (or recreate the branch fresh off the base, as this session did) rather than
+  reading `lib/` off disk. A directory name close to the issue's own vocabulary
+  ("issues" for an issues browser) is the first place to look for something to
+  extend, and extending it beats a second, competing concept two commits later.
+
 Short, practical lessons captured at session close.
 Keep each lesson concise and actionable.
 
@@ -293,6 +331,14 @@ Questions carried forward:
 - `flutter_secure_storage_linux` can block indefinitely on Secret Service/D-Bus when no keyring daemon is running, rather than throwing — a real hang, not a slow call. This is a standing hazard for any caller of `SecureServerConfigStore`/`SecureSessionStore` that reaches a real host-VM `flutter test` without a storage override (both only catch `Exception`, no timeout). It is **not**, on its own, a reason to put a timeout around a *network* call: a first cut of `gateway_context_binding.dart` wrapped both the local storage read and `sessionProvider.future` (which can include a real session-renewal network round trip) in the same 100 ms `.timeout()`. That silently and permanently downgraded a signed-in operator to "not configured" on ordinary renewal latency slower than 100 ms — reproduced with a 150 ms fake renewal, pinned by `test/app/gateway_context_binding_test.dart` (council 2026-08-18, "the adversarial user"). The fix (`_guardStorageRead`) scopes the timeout to the local storage read only; the session read is unguarded, relying on `SessionController`'s own fail-closed behaviour instead. The underlying `SecureKeyValueStore` gap is unfixed at its own layer — the next caller of those two stores from a widget reachable without a storage override in an existing test will still need its own guard or its own test override.
 - Fixing a synchronous unguarded lookup by making it `async` (with a network fallback for the case the synchronous version could not handle) can introduce a new race even when the fix itself is correct: `RemoteSessionsController.control()`'s `firstWhere` crash fix added a fallback fetch, which moved the point where `pending`/busy state gets set from "before any `await`" to "after a network round trip" — a gap two rapid taps could land inside, each firing its own duplicate `controlSession(...)` call. The council round that verified the crash fix (round 2) is what caught it, by testing the fix's *own* new code path under concurrency, not just its happy path. The general lesson: turning a sync call into an async one anywhere state-mutating side effects are ordered around it is worth an explicit re-entrancy check, not just a correctness check on the new async path alone.
 - Two council rounds is not "run round 1's checklist twice" — round 2 verified round 1's 6 findings (closing 2 that were correct-but-untested, per `council.md` §2's "a test that fails without the fix, or it is a claim, not a closure") *and* found a new, live, reproducible bug in round 1's own fix, with no mutation needed to trigger it. Budget round 2 as real adversarial work against the delivered diff, not a formality.
+
+## 2026-08-21 — WK-20260821-gh-29-pr51-blocked-indicator-fix (council round 2, closing a round-1 finding on PR #51)
+
+- Round 1 flagged that the dashboard's "Priority issues" card (`_IssueListTile`, `lib/app/project_dashboard_screen.dart`) silently drops the blocked indicator #29 introduced project-wide: a `IssueStatus.blocked` issue with a real `blockedReason` (the seeded `fix-development-build`) rendered only an icon, the title and a priority label, while the same issue one tap away through `issues_screen.dart` shows a distinct blocked icon + "Blocked" text. `project_issue.dart`'s own doc comment requires blocked status be "labeled in text, never conveyed by color alone" — the dashboard tile conveyed it by *nothing*, which the round-1 review correctly called strictly worse than color-alone.
+- The PR author's original scoping decision (comments in `mock_issue_repository.dart` / `project_issue.dart`: #29 only *adds* fields so the pre-existing dashboard card "needed no changes") was reasonable at the time #29 was scoped, but it left a real, observable convention violation once `IssueStatus.blocked` existed. "No changes needed to compile/pass existing tests" and "no changes needed to honor the project's own written convention" are different claims — round 1 caught that gap between them.
+- Fixed rather than risk-accepted: the fix was exactly as small as it looked once in the code — reused `AppIcons.blocked` + a "Blocked" `Text` in `theme.colorScheme.error`, the same pairing `issues_screen.dart`'s `_IssueCard` already established, added above the existing icon/title/priority `Row` in `_IssueListTile`. Also surfaced `blockedReason` in `_IssueDialog`'s detail text for the same reason — the tile only has room to flag the state, the dialog is where the reason belongs. No design invention, no scope creep.
+- Regression test (`test/app/project_dashboard_screen_test.dart`, "a blocked priority issue shows the blocked indicator...") pumps the `codex-bridge` project dashboard and asserts the blocked icon/label render for its priority issues, and that the dialog surfaces the reason text. Written expecting exactly one blocked issue in that project's top-5; the first run found two (`fix-development-build` and `issue-migration-collision`, both critical+blocked) — `flutter test` catching that immediately, before the assertion was loosened to `findsNWidgets(2)`, is the same "prove it against the real fixture, not the assumed one" lesson as the phase-1 council entries above.
+- `flutter analyze` clean; `flutter test` 390/390 (389 pre-existing + 1 new).
 
 ## 2026-08-21 — WK-20260821-gh-45-mobile-threat-model-and-security-baseline
 

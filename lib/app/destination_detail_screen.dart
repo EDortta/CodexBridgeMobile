@@ -3,6 +3,10 @@ import 'package:go_router/go_router.dart';
 
 import '../core/design/app_tokens.dart';
 import '../core/navigation/app_destinations.dart';
+import '../features/issues/presentation/epic_detail_screen.dart';
+import '../features/issues/presentation/epics_screen.dart';
+import '../features/issues/presentation/issue_detail_screen.dart';
+import '../features/issues/presentation/issues_screen.dart';
 import '../features/missions/presentation/mission_detail_screen.dart';
 import '../features/missions/presentation/work_session_detail_screen.dart';
 import 'project_dashboard_screen.dart';
@@ -23,6 +27,10 @@ class DestinationDetailScreen extends StatelessWidget {
     final String? sessionId = queryParameters['session'];
     final String? missionId = queryParameters['mission'];
     final String? projectId = queryParameters['project'];
+    final String? epicsProjectId = queryParameters['epics'];
+    final String? issuesProjectId = queryParameters['issues'];
+    final String? epicId = queryParameters['epic'];
+    final String? issueId = queryParameters['issue'];
     final ThemeData theme = Theme.of(context);
 
     if (destination == AppDestination.work && sessionId != null && sessionId.isNotEmpty) {
@@ -33,6 +41,25 @@ class DestinationDetailScreen extends StatelessWidget {
     }
     if (destination == AppDestination.projects && projectId != null && projectId.isNotEmpty) {
       return ProjectDashboardScreen(projectId: projectId);
+    }
+    // #29's Epic and Issue views: distinct screens, both project-scoped and
+    // both reached from the Projects branch — the same query-param dispatch
+    // `mission`/`session` already use under `work`.
+    if (destination == AppDestination.projects &&
+        epicsProjectId != null &&
+        epicsProjectId.isNotEmpty) {
+      return EpicsScreen(projectId: epicsProjectId);
+    }
+    if (destination == AppDestination.projects &&
+        issuesProjectId != null &&
+        issuesProjectId.isNotEmpty) {
+      return IssuesScreen(projectId: issuesProjectId);
+    }
+    if (destination == AppDestination.projects && epicId != null && epicId.isNotEmpty) {
+      return EpicDetailScreen(epicId: epicId);
+    }
+    if (destination == AppDestination.projects && issueId != null && issueId.isNotEmpty) {
+      return IssueDetailScreen(issueId: issueId);
     }
 
     return Scaffold(

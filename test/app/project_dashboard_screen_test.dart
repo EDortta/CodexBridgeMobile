@@ -5,6 +5,7 @@ import 'package:codex_bridge_mobile/core/format/relative_moment.dart';
 import 'package:codex_bridge_mobile/core/gateway/gateway_context.dart';
 import 'package:codex_bridge_mobile/core/gateway/gateway_context_provider.dart';
 import 'package:codex_bridge_mobile/features/decisions/presentation/decisions_screen.dart';
+import 'package:codex_bridge_mobile/features/issues/presentation/issues_screen.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session_explanation.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session_log_entry.dart';
@@ -134,6 +135,40 @@ void main() {
     expect(find.text('Project "does-not-exist" was not found.'), findsOneWidget);
   });
 
+  testWidgets(
+    'a blocked priority issue shows the blocked indicator, not just an icon '
+    'and priority label (council round-1 finding on #51)',
+    (WidgetTester tester) async {
+      // codex-bridge's #1 priority issue (critical) is
+      // `fix-development-build`, seeded as `IssueStatus.blocked` with a real
+      // `blockedReason` in `mock_issue_repository.dart`. Before this fix the
+      // dashboard's `_IssueListTile` rendered only an icon, the title and a
+      // priority label for it — the same issue viewed one tap away through
+      // `issues_screen.dart` (#29) shows a distinct blocked icon + "Blocked"
+      // label, so the dashboard silently dropped the indicator.
+      //
+      // codex-bridge also seeds a second critical+blocked issue
+      // (`issue-migration-collision`), so both the label and the icon are
+      // expected twice — this only asserts the indicator is not dropped,
+      // not this project's exact issue count.
+      await pumpDashboard(tester, 'codex-bridge');
+
+      expect(find.text('Development build fails on the CI runner'), findsOneWidget);
+      expect(find.text('Blocked'), findsNWidgets(2));
+      expect(find.byIcon(AppIcons.blocked), findsNWidgets(2));
+
+      await tester.tap(find.text('Development build fails on the CI runner'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.textContaining(
+          'Blocked: Waiting on operator review of the gh-5/6/7/8 integration merge.',
+        ),
+        findsOneWidget,
+      );
+    },
+  );
+
   testWidgets('tapping a priority issue opens a dialog with its detail', (
     WidgetTester tester,
   ) async {
@@ -165,6 +200,22 @@ void main() {
             .widget<MissionDetailScreen>(find.byType(MissionDetailScreen))
             .missionId,
         'mobile-foundation',
+      );
+    },
+  );
+
+  testWidgets(
+    "tapping the Priority issues header opens the project's own Issues "
+    'browser (#29), not just an unscoped list',
+    (WidgetTester tester) async {
+      await pumpDashboard(tester, 'codex-bridge-mobile');
+
+      await tester.tap(find.text('Priority issues'));
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.widget<IssuesScreen>(find.byType(IssuesScreen)).projectId,
+        'codex-bridge-mobile',
       );
     },
   );

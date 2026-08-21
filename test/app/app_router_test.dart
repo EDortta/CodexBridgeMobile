@@ -8,6 +8,10 @@ import 'package:codex_bridge_mobile/app/project_dashboard_screen.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_destinations.dart';
 import 'package:codex_bridge_mobile/core/navigation/app_routes.dart';
 import 'package:codex_bridge_mobile/features/decisions/presentation/decision_detail_screen.dart';
+import 'package:codex_bridge_mobile/features/issues/presentation/epic_detail_screen.dart';
+import 'package:codex_bridge_mobile/features/issues/presentation/epics_screen.dart';
+import 'package:codex_bridge_mobile/features/issues/presentation/issue_detail_screen.dart';
+import 'package:codex_bridge_mobile/features/issues/presentation/issues_screen.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/mission_detail_screen.dart';
 
 void main() {
@@ -144,6 +148,75 @@ void main() {
           .widget<MissionDetailScreen>(find.byType(MissionDetailScreen))
           .missionId,
       'mobile-foundation',
+    );
+  });
+
+  testWidgets('tapping an issue card carries its id to the detail screen', (
+    WidgetTester tester,
+  ) async {
+    await _pumpApp(
+      tester,
+      initialLocation: Uri(
+        path: AppDestination.projects.detailPath,
+        queryParameters: <String, String>{'issues': 'codex-bridge-mobile'},
+      ).toString(),
+    );
+
+    await tester.tap(find.text('App icon needs a higher-resolution asset'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<IssueDetailScreen>(find.byType(IssueDetailScreen)).issueId,
+      'mobile-icon-polish',
+    );
+  });
+
+  testWidgets('tapping an epic card carries its id to the detail screen', (
+    WidgetTester tester,
+  ) async {
+    await _pumpApp(
+      tester,
+      initialLocation: Uri(
+        path: AppDestination.projects.detailPath,
+        queryParameters: <String, String>{'epics': 'codex-bridge-mobile'},
+      ).toString(),
+    );
+
+    await tester.tap(find.text('Epic 06 — Epics, Issues e planejamento'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<EpicDetailScreen>(find.byType(EpicDetailScreen)).epicId,
+      'epic-mobile-planning',
+    );
+  });
+
+  testWidgets('toggles between the Epics and Issues views for the same project', (
+    WidgetTester tester,
+  ) async {
+    await _pumpApp(
+      tester,
+      initialLocation: Uri(
+        path: AppDestination.projects.detailPath,
+        queryParameters: <String, String>{'epics': 'codex-bridge-mobile'},
+      ).toString(),
+    );
+    expect(find.byType(EpicsScreen), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('viewIssuesButton')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<IssuesScreen>(find.byType(IssuesScreen)).projectId,
+      'codex-bridge-mobile',
+    );
+
+    await tester.tap(find.byKey(const Key('viewEpicsButton')));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<EpicsScreen>(find.byType(EpicsScreen)).projectId,
+      'codex-bridge-mobile',
     );
   });
 

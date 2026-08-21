@@ -255,3 +255,8 @@ Still open, not this session's to resolve: whether the overnight routine
 (`trig_01Mepr68impzTrGjDvzmnJRk`) is still armed — operator is checking
 `https://claude.ai/code/routines` directly; out of scope for any agent
 session per the operator's own instruction.
+
+**Phase 4 is closed.** #28 merged into `development` at `b0ac4a1` (confirmed
+2026-08-21 by `git log`). Phase 5 (`docs/issues/phase-5/`) now owns #29 —
+see `docs/issues/phase-5/RESUME.md` for its own Next Step. This file is kept
+only as history; do not resume work from here.
