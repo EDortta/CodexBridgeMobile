@@ -511,6 +511,51 @@ Questions carried forward:
   every..."), grep the implementation for that exact behavior on both
   before trusting the comment — this is cheap and catches drift a normal
   read-through skims past.
+
+- [2026-08-21] WK-20260821-gh-53-signout-revoke — closed the gap the entry
+  above left open: `SessionController.signOut` now calls
+  `AuthGateway.revoke` alongside the local keystore clear. Two design
+  decisions worth naming for whoever touches this next. First, fail-open
+  is on the network call *only*, never on failure handling: `revoke` is
+  awaited synchronously ahead of the local clear (not raced against it,
+  not fired-and-forgotten in the background) because `AuthGateway.revoke`
+  is documented to never throw and to resolve inside its own bounded
+  timeout — the same trust the controller already extends to `signIn` and
+  `renew`, both called the same way with no `try/catch` around them. A
+  failure is folded into a new `SignedOut.serverSessionMayRemainActive`
+  flag and rendered as a plain warning (`session_screen.dart`), reusing
+  the existing `sessionMayRemainOnDevice` banner pattern rather than the
+  SnackBar-on-catch pattern used elsewhere in the app (`mission_detail_
+  screen.dart`, `decision_detail_screen.dart`) — that pattern needs a
+  thrown exception at a widget call site, and this controller's whole
+  design is fire-and-forget through provider state, never a future the
+  screen awaits. Second, two `signOut` calls landing before either's
+  network leg resolves (the "Remove from this device" retry, called while
+  the first attempt is still in flight) are collapsed onto one `revoke`
+  request via a memoized in-flight `Future<bool>`
+  (`SessionController._pendingRevoke`) — not because it is reachable from
+  today's screen (the button disables itself the instant `renewing` flips
+  true), but because the issue named the race explicitly and the fix is a
+  few lines.
+- The bug this session's own test coverage caught, not review: `signIn`'s
+  guard rebuilds `SignedOut` with `signingIn: true` *before* awaiting the
+  gateway, and that rebuild only carried `sessionMayRemainOnDevice`
+  forward — not the new `serverSessionMayRemainActive`. A sign-out with a
+  failed revoke, followed by any sign-in attempt (even one later refused),
+  silently dropped the warning the instant the sign-in started, because
+  the flag never survived that first rebuild to be read back later. Caught
+  by a test written specifically because the file already carries a
+  named prior finding of the exact same shape for
+  `sessionMayRemainOnDevice` (the council round-2 finding in the #22
+  entries above) — pattern-matching "this file has been bitten by this
+  exact class of bug before" onto the new field was what prompted writing
+  that test at all, not a generic instinct to test everything. Action next
+  time: when a state class gains a field that must survive an
+  intermediate rebuild the same way an existing sibling field does (grep
+  the class for other fields threaded through the same guard), write the
+  carry-forward test for the new field *before* trusting the implementation
+  — the existing field's own test coverage will not catch a sibling field
+  the rebuild forgot.
 - [2026-08-21] WK-20260821-gh-10-http-conversation-repository — Wired
   `conversations` to the real `CodexBridge` gateway (issue #10, PR #22 on
   that repo). `lib/features/conversations/domain/conversation.dart` used to

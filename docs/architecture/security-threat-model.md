@@ -322,10 +322,16 @@ separately and out of this doc's scope). These three checklist items have
 - "Aplicar minimização de dados locais" — no explicit retention/minimization
   policy is written anywhere for what the app caches once Epic #12's offline
   store lands.
-- "Permitir limpeza segura de dados e revogação remota" — sign-out clears
-  only the local session key (`SecureSessionStore.clearSession`); there is
-  no remote-revocation call to the gateway, and no "wipe this device's
-  data" operator action.
+- "Permitir limpeza segura de dados e revogação remota" — **partially
+  closed by `#53`**: `SessionController.signOut` now calls
+  `AuthGateway.revoke` (`POST /api/v1/auth/revoke`) alongside the local
+  keystore clear, best-effort — a refused or unreachable revoke does not
+  block the local sign-out, and is surfaced to the operator as
+  `SignedOut.serverSessionMayRemainActive` rather than swallowed. Still
+  open: an expired session and a failed renewal both clear the local
+  keystore through the same `SessionController._revoke` without calling
+  the server (`#53` scoped only the `signOut` path, per its own DoD), and
+  there is still no "wipe this device's data" operator action.
 
 **Recommend the operator file three follow-up issues** (or fold them into
 existing #46/#39 scopes where they naturally overlap) so these have an
