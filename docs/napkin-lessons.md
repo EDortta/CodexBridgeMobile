@@ -511,3 +511,79 @@ Questions carried forward:
   every..."), grep the implementation for that exact behavior on both
   before trusting the comment — this is cheap and catches drift a normal
   read-through skims past.
+
+## 2026-08-21 — WK-20260821-http-project-repository
+
+- CodexBridge issue #5 shipped its own `ProjectHealth` enum — `ok`/
+  `degraded`/`unknown`/`disabled` — which does not line up with this app's
+  domain `ProjectHealth` (`active`/`unhealthy`/`pendingDecision`/`offline`,
+  drafted by #23 before the backend contract existed). They are four
+  different meanings, not four spellings of the same thing: `disabled` is
+  an operator decision, not an incident; `unknown` means no executor is
+  even assigned; `degraded` means executors are assigned but none live;
+  `ok` says nothing about a pending decision, which arrives as a separate
+  `pendingDecisions` integer alongside it. Rather than widen the mobile
+  enum (#23/#24 presentation-layer territory this change does not touch),
+  `HttpProjectRepository.projectHealthFromBackend` maps the pair onto it:
+  `disabled` -> `offline` ("Disabled in the registry"), `unknown` ->
+  `offline` ("No executor assigned"), `degraded` -> `unhealthy` ("No live
+  executor connected"), `ok` with `pendingDecisions > 0` -> `pendingDecision`
+  (count in the attention text), `ok` otherwise -> `active`. This is a
+  judgment call, not something the contract dictates, flagged here the same
+  way the auth work's access-code-vs-username/password gap was flagged
+  earlier the same day — an operator who disagrees with the priority order
+  (pending-decision only shown when otherwise `ok`) should treat this as a
+  one-file change (`http_project_repository.dart`'s
+  `projectHealthFromBackend`), not an architecture change.
+- The 404-not-403 pattern (`getProject`: "confirming that an identifier
+  exists is what probing is for") only bites at `GET /projects/{id}`, not
+  at the list endpoint — `GET /projects` already filters to the caller's
+  visible scope in the query, so an out-of-scope project simply never
+  appears in `items`. `ProjectRepository.loadProject` therefore returns
+  `ProjectSummary?` (`null` = not found, mapped straight from a 404) while
+  every other non-2xx status throws `ProjectRepositoryException` — and
+  `projectByIdProvider` (`lib/app/project_dashboard_screen.dart`'s only
+  caller) already treated a `null` value distinctly from an `AsyncError`
+  before this change, so wiring the real endpoint in needed no widget-level
+  change to preserve that separation.
+- Followed `HttpLiveSessionRepository`/`live_session_providers.dart`'s
+  established shape rather than `HttpAuthGateway`'s: `ProjectRepository`
+  methods take `{required Uri server, required String accessToken}` as
+  per-call parameters (not constructor state), and the presentation layer
+  (`project_providers.dart`) resolves them from `gatewayContextProvider`
+  before calling — the same seam missions already use, rather than the
+  injected-resolver-callable shape `HttpAuthGateway` needs for its own
+  chicken-and-egg problem (no session exists yet at sign-in time to carry a
+  `GatewayContext`). This ripples `gatewayContextProvider` into every
+  test that renders `ProjectsScreen` or navigates through it —
+  `test/features/projects/presentation/projects_screen_test.dart` and
+  `test/app/app_router_test.dart` both needed a fixed override added, the
+  same one `test/app/project_dashboard_screen_test.dart` already carried.
+- `HttpLiveSessionRepository`'s own gap — none of its calls bounded by a
+  timeout — is exactly what this change avoids repeating:
+  `HttpProjectRepository` bounds `connectionTimeout`, the request-close
+  await, and the body-read await, all with the same `.timeout(timeout)`
+  discipline `HttpAuthGateway` already established, and
+  `http_project_repository_test.dart` has a dedicated test (a server that
+  accepts the connection and never answers) proving it actually fires
+  rather than just being present in the code.
+- Wired the real/mock switch exactly like `auth_gateway_binding.dart`:
+  `projectRepositoryProvider` still defaults to `MockProjectRepository`
+  (every widget test, every debug build until `main.dart`'s overrides
+  apply), and `lib/app/project_repository_binding.dart` overrides it with
+  `HttpProjectRepository` under `kReleaseMode` — the branch itself pulled
+  into `resolveProjectRepository`, tested directly the same way
+  `resolveAuthGateway` is, since `kReleaseMode` never flips inside one test
+  process.
+- Not done: real pagination. `loadProjects` reads one page at whatever the
+  server's default `limit` is and ignores `page.hasMore`/`nextCursor` —
+  the same simplification `HttpLiveSessionRepository` already made for
+  `/api/v1/sessions`. The backend module's own docstring calls its
+  registry "operator-curated and expected to hold at most a few hundred
+  rows," so this is unlikely to hide a project today, but it is a real gap
+  for a follow-up issue once the registry grows past one page.
+- `flutter analyze` clean; `flutter test` 423/423 (16 new in
+  `http_project_repository_test.dart`, 2 new in
+  `project_repository_binding_test.dart`, plus updates to
+  `projects_screen_test.dart` and `app_router_test.dart` to carry the new
+  `gatewayContextProvider` dependency — no regressions).
