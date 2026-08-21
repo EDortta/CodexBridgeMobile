@@ -55,6 +55,9 @@ a toca. Use `- (none)` se genuinamente não houver nenhum.
 - `docs/project-rules.md` — regras específicas deste projeto (também na tabela acima)
 - `docs/product-foundation.md` — escopo e premissas canônicas do produto
 - `docs/issues/phase-4/README.md` — épico público **ativo** (Epic #5) e ordem de execução
+- `docs/issues/epic-14/README.md` — épico transversal (Epic #14, segurança) que
+  acompanha todas as fases; não segue o padrão `phase-N` — ver `epic.md` do
+  próprio épico
 - `docs/issues/phase-3/README.md` — épico encerrado (Epic #4: #25/#26); mantido para consulta
 - `docs/issues/phase-2/README.md` — épico encerrado (Epic #3: #23/#24 eram suas únicas issues); mantido para consulta
 - `docs/issues/phase-1/README.md` — épico encerrado (Epic #2, e Epic #7 fora de ordem); mantido para consulta
@@ -72,3 +75,6 @@ Leitura escopada: só quem for mexer na área precisa.
 
 - `docs/architecture/state-architecture.md` — ao tocar em feature, provider ou repositório
 - `docs/architecture/navigation.md` — ao tocar em rota, shell ou destino primário
+- `docs/architecture/security-threat-model.md` — ao tocar em autenticação,
+  sessão, storage seguro, cliente de rede, arquivos (SAF), instalação de APK
+  ou notificações

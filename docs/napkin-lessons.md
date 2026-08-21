@@ -339,3 +339,90 @@ Questions carried forward:
 - Fixed rather than risk-accepted: the fix was exactly as small as it looked once in the code — reused `AppIcons.blocked` + a "Blocked" `Text` in `theme.colorScheme.error`, the same pairing `issues_screen.dart`'s `_IssueCard` already established, added above the existing icon/title/priority `Row` in `_IssueListTile`. Also surfaced `blockedReason` in `_IssueDialog`'s detail text for the same reason — the tile only has room to flag the state, the dialog is where the reason belongs. No design invention, no scope creep.
 - Regression test (`test/app/project_dashboard_screen_test.dart`, "a blocked priority issue shows the blocked indicator...") pumps the `codex-bridge` project dashboard and asserts the blocked icon/label render for its priority issues, and that the dialog surfaces the reason text. Written expecting exactly one blocked issue in that project's top-5; the first run found two (`fix-development-build` and `issue-migration-collision`, both critical+blocked) — `flutter test` catching that immediately, before the assertion was loosened to `findsNWidgets(2)`, is the same "prove it against the real fixture, not the assumed one" lesson as the phase-1 council entries above.
 - `flutter analyze` clean; `flutter test` 390/390 (389 pre-existing + 1 new).
+
+## 2026-08-21 — WK-20260821-gh-45-mobile-threat-model-and-security-baseline
+
+- Grounding a threat model in the actual codebase instead of a generic
+  mobile-OWASP template surfaced a critical finding a template pass would
+  have missed entirely: `android/app/build.gradle.kts`'s release build type
+  signs with `signingConfigs.getByName("debug")` — this project's own debug
+  keystore, whichever machine generated it. Anyone holding that specific
+  file can sign a same-certificate "update" that Android accepts as a
+  trusted in-place upgrade on any device that already installed a
+  debug-signed build, which is exactly what CI's own
+  `flutter build apk --release` produces today. No generic checklist item
+  says "check what actually signs your release build" — it only came up by
+  reading the Gradle file the issue's own acceptance criteria
+  ("APK delivery") pointed at.
+- A second finding was already sitting, unresolved, in
+  `docs/napkin-lessons.md` itself from a 2026-08-14 council round:
+  `authGatewayProvider` returns `MockAuthGateway` unconditionally, including
+  in release builds, with no `kReleaseMode` gate — `security-standards.md`
+  §4 requires exactly that gate and it does not exist. A threat model that
+  only reads current code and not this file's own accumulated open
+  questions would have re-discovered (or missed) something already on
+  record. Read the full "Questions carried forward" backlog before writing
+  a security document — some of the highest-value findings are already
+  there, just never promoted to a document with an owner.
+- Action next time: when a threat-model or security-baseline issue lands,
+  grep `docs/napkin-lessons.md` for unresolved council questions touching
+  the surface in scope *before* re-deriving findings from the code alone —
+  several open questions there are already-found, never-acted-on security
+  gaps, and the value of a fresh pass is connecting them to a prioritized
+  owner, not re-discovering them from zero.
+- Epic #14's own GitHub scope checklist (`gh issue view 14`) names three
+  items — biometric gate for critical actions, local data minimization,
+  remote wipe/revocation — with no issue filed against any of them, visible
+  only by cross-referencing the epic's checklist against `gh issue list`'s
+  actual issue titles. A docs-only threat-model issue can name that gap
+  (`docs/architecture/security-threat-model.md` R11) but should not decide
+  the epic's issue list unilaterally — recommend filing, do not file, unless
+  explicitly asked to create issues.
+
+## 2026-08-21 — WK-20260821-gh-45-council-round-2
+
+- Council round 1 on PR #50 (this issue's threat model) left two findings
+  open going into round 2. **Finding 1 (mechanism claim overstated):** R1's
+  prose said the Android debug keystore "is public and identical across
+  every developer machine that ever ran flutter/gradle defaults" — factually
+  wrong. Only the alias (`androiddebugkey`), password (`android`/`android`),
+  and certificate DN (`CN=Android Debug,O=Android,C=US`) are fixed by
+  convention; the RSA key pair is generated locally per machine the first
+  time it builds a debug variant, so different machines normally hold
+  different key material. No `debug.keystore` is checked into this repo.
+  Fixed by narrowing the claim to the real risk: *this project's own*
+  `debug.keystore` — whichever machine produced the one CI/release builds
+  actually sign with — must never leak, because whoever holds that specific
+  file can sign a same-certificate update. Severity stayed Critical; only
+  the mechanism description was wrong, not the risk. The same overstated
+  phrasing had also leaked into `docs/issues/epic-14/README.md`'s R1
+  one-liner and this file's own gh-45 entry above — all three needed the
+  same correction, not just the primary doc. **Lesson:** when a claim about
+  *why* something is dangerous gets corrected, grep the whole diff (and
+  adjacent docs/lessons files) for the same phrasing before calling it
+  closed — a wrong mechanism claim tends to get restated in a summary doc
+  and a lessons entry, not just written once.
+- **Finding 2 (unrelated commit in the PR):** PR #50's branch carried
+  `29b2421` ("docs(phase-4): record #28 merged/pushed/closed...") ahead of
+  the actual #45 work (`4b5d318`), pulling two files unrelated to #45
+  (`docs/issues/phase-4/README.md`, `docs/issues/phase-4/RESUME.md`) into
+  the diff. Confirmed `29b2421` was not yet an ancestor of `origin/development`
+  by any other path (`origin/development` was still at `b0ac4a1`, `29b2421`'s
+  own parent) and not an ancestor of PR #51's branch either. Fixed by
+  resetting the branch to `origin/development`, cherry-picking only `4b5d318`
+  (with the finding-1 wording fix folded in), and force-pushing — the PR
+  diff is now #45's threat-model work only. `29b2421` was still a
+  fast-forward child of `origin/development`'s then-current tip (`b0ac4a1`)
+  at the moment the branch was reset, and this repo's own history shows
+  plain `docs: ...` commits landing directly on `development` without a PR
+  as an established convention (e.g. `57d77e0`, `4ad9873`, `8376ea1`) — so
+  `29b2421` was pushed straight to `origin/development` as a fast-forward
+  (`b0ac4a1..29b2421`), not force, no rewrite. Its content is preserved on
+  `development`; only its position in PR #50's own branch changed.
+- Action next time: a docs-only PR can still carry an accidental extra
+  commit from whatever the branch was cut atop at the time — before
+  requesting or closing a council round, run
+  `git log <base>..<branch> --oneline` and diff each commit's file list
+  against the issue's own acceptance criteria, not just the PR's aggregate
+  diff, to catch a stray commit that the aggregate diff would only show as
+  "extra files changed."

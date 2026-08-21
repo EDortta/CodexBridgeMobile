@@ -3,11 +3,12 @@
 - work_id: WK-20260820-gh-28-mission-detail-timeline-and-controls
 - date: 2026-08-20
 - status: #27 finished, merged (`f30cec5`), pushed, and closed on GitHub;
-  #28 finished on `feature/gh-28/mission-detail-timeline-and-controls`,
-  **reviewer pass + council round 1 both complete, all findings fixed and
-  tested**, committed locally, **not merged/pushed/closed — pending
-  operator review**; #29 not started (never reached — see "Overnight run
-  outcome" below)
+  #28 finished, reviewer pass + council round 1 both complete, all findings
+  fixed and tested, **merged `b0ac4a1` (`--no-ff`, 2026-08-20), pushed to
+  `origin/development`, closed on GitHub** (operator-approved, feature
+  branch deleted); #29 started 2026-08-20 (operator-authorized, after #28's
+  merge — see "Overnight run outcome" below for why it didn't start
+  earlier)
 
 ## Current state
 
@@ -231,6 +232,29 @@ tap-timing APIs — the repository-level reproduction is the same underlying
 race, just triggered directly rather than through two real taps.
 
 ## Next Step (DO THIS FIRST)
+
+**#28 closed out, 2026-08-20**: operator reviewed and approved the merge
+directly (relayed through the orchestrating session in the same
+conversation) — `--no-ff` merge to `development` (`b0ac4a1`), `flutter
+analyze`/`flutter test` re-confirmed green (324/324) post-merge, pushed to
+`origin/development`, `feature/gh-28/...` deleted (`git branch -d`, refused
+if unmerged — was), issue #28 closed on GitHub with a comment referencing
+the merge commit. Cross-checked against the CodexBridge backend session in
+parallel: CodexBridge #7 (missions API) is now merged into the gateway's
+own `development` too (`16ce28e`) — see `README.md`'s updated "External
+dependency" section for the real contract shape and why `MockMissionRepository`
+still stands in.
+
+Operator then authorized starting **#29 — Build Epics and Issues browser
+(Epic #6)** in the same pattern as #28: own branch off `development`,
+reviewer.md + council.md self-review, commit locally, **no push** pending a
+separate operator confirmation. See this file's #29 section below for
+progress.
+
+Still open, not this session's to resolve: whether the overnight routine
+(`trig_01Mepr68impzTrGjDvzmnJRk`) is still armed — operator is checking
+`https://claude.ai/code/routines` directly; out of scope for any agent
+session per the operator's own instruction.
 
 **Phase 4 is closed.** #28 merged into `development` at `b0ac4a1` (confirmed
 2026-08-21 by `git log`). Phase 5 (`docs/issues/phase-5/`) now owns #29 —
