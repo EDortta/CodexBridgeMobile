@@ -3,14 +3,16 @@ import '../domain/issue_repository.dart';
 import '../domain/issue_status.dart';
 import '../domain/project_issue.dart';
 
-/// Stands in for a real epics/issues endpoint until one exists —
-/// CodexBridge #8 ("Expose Epics and Issues API") is open, not implemented
-/// (`gh issue view 8 -R EDortta/CodexBridge`, checked 2026-08-21), so
-/// `HttpIssueRepository` cannot be wired yet. Its proposed scope names the
-/// same fields #29 needed: "Status, priority, labels, assignee, dependencies
-/// and blocked reasons" and "Epic–Issue relationships" — `ProjectIssue`'s
-/// and `Epic`'s new fields follow that shape directly, the same way #27
-/// shaped `Mission`'s fields off CodexBridge #7's proposed scope.
+/// The debug-build default and widget-test fixture — `HttpIssueRepository`
+/// (`data/http_issue_repository.dart`) is the real implementation, wired in
+/// release builds by `lib/app/issue_repository_binding.dart`, the same
+/// `MockAuthGateway`/`HttpAuthGateway` split `auth_gateway_binding.dart`
+/// uses. `ProjectIssue`'s and `Epic`'s fields were originally shaped off
+/// CodexBridge issue #8's *proposed* scope while #8 was still open; #8 has
+/// since shipped (`gateway/app/api/routes/epics.py`, `.../issues.py`) with a
+/// narrower, project-scoped contract than this mock's own "everything,
+/// unscoped" shape — see `HttpIssueRepository`'s class doc for how that gap
+/// is closed without reshaping #29's UI or this mock.
 ///
 /// The four issues this mock carried before #29 (`fix-development-build`,
 /// `flaky-connection-test`, `desktop-shortcut-conflict`,

@@ -15,8 +15,8 @@ class Epic {
     required this.projectId,
     required this.title,
     required this.status,
-    required this.priority,
     required this.createdAt,
+    this.priority,
     this.summary = '',
     this.blockedReason,
     this.issueIds = const <String>[],
@@ -26,7 +26,14 @@ class Epic {
   final String projectId;
   final String title;
   final IssueStatus status;
-  final IssuePriority priority;
+
+  /// Null for a real, gateway-loaded epic: `EpicModel` (`CodexBridge`
+  /// `gateway/app/api/routes/epics.py`) carries no priority column — only
+  /// issues do. `MockIssueRepository`'s fixtures still set one, so this
+  /// stays nullable rather than dropped: presentation code that reads it
+  /// (`epics_screen.dart`, `epic_detail_screen.dart`) already treats it as
+  /// optional, and nothing invents a value the server never sent.
+  final IssuePriority? priority;
   final DateTime createdAt;
 
   /// What this epic is trying to achieve — shown on the detail screen's

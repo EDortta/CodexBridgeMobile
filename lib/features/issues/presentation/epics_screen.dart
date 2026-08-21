@@ -238,10 +238,11 @@ class _EpicCard extends StatelessWidget {
                 runSpacing: AppSpacing.xxs,
                 children: <Widget>[
                   InlineBadge(icon: AppIcons.status, text: epic.status.label),
-                  InlineBadge(
-                    icon: Icons.priority_high_rounded,
-                    text: epic.priority.label,
-                  ),
+                  if (epic.priority case final IssuePriority priority)
+                    InlineBadge(
+                      icon: Icons.priority_high_rounded,
+                      text: priority.label,
+                    ),
                   InlineBadge(
                     icon: Icons.checklist_rounded,
                     text: '${epic.issueIds.length} issue(s)',
