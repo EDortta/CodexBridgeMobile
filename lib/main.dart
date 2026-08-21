@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app/app.dart';
 import 'app/app_router.dart';
 import 'app/auth_gateway_binding.dart';
+import 'app/decision_repository_binding.dart';
 import 'app/gateway_context_binding.dart';
 import 'app/project_repository_binding.dart';
 
@@ -18,6 +19,7 @@ void main() => runApp(
       authGatewayBinding,
       gatewayContextBinding,
       projectRepositoryBinding,
+      decisionRepositoryBinding,
     ],
     child: CodexBridgeMobileApp(router: createAppRouter()),
   ),
