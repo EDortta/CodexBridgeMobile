@@ -511,3 +511,57 @@ Questions carried forward:
   every..."), grep the implementation for that exact behavior on both
   before trusting the comment — this is cheap and catches drift a normal
   read-through skims past.
+- [2026-08-21] WK-20260821-gh-10-http-conversation-repository — Wired
+  `conversations` to the real `CodexBridge` gateway (issue #10, PR #22 on
+  that repo). `lib/features/conversations/domain/conversation.dart` used to
+  be a two-field stub (`title`, `lastMessage`) with a one-method repository
+  interface (`loadConversations()` only) — nowhere near the real contract's
+  five endpoints, so wiring this "for real" meant expanding the domain
+  model (`Conversation`, `ConversationMessage`, `ContextReference`,
+  `ConversationsPage<T>`) before there was anything to point an HTTP
+  repository at, not just swapping an implementation behind an unchanged
+  interface the way `HttpAuthGateway` could. Three contract details from
+  the server's own hard-won delivery notes (`gateway/app/api/routes/
+  conversations.py`'s module docstring) had to survive that expansion
+  unflattened: `unread` only ever advances through `GET .../messages` (to
+  the newest message *actually fetched*, never to "now") and
+  `POST .../messages` (the sender's own cursor) — never a client-side
+  "mark as read"; the conversations list orders by `createdAt`/`id`, never
+  `lastActivityAt` — `HttpConversationRepository` does not resort what the
+  server returns, and `conversations_screen.dart`'s subtitle reads
+  `lastActivityAt` for display only; and `artifact` is simply absent from
+  `ConversationContextType` — not a case the client special-cases and
+  rejects, an enum member that does not exist, so there is nothing to get
+  wrong later by adding a fifth branch that shouldn't be there.
+  Judgment calls: (1) no `uuid` package and no existing client-generated-id
+  pattern anywhere in `lib/` (checked with `grep -rn "uuid\|Uuid" lib`
+  before writing one) — added a from-scratch UUID v4 on `Random.secure()`
+  (`lib/core/identifiers/idempotency_key.dart`) rather than a new
+  dependency for one 16-byte value. (2) `postMessage`/`createConversation`
+  take `idempotencyKey` as *optional*: a caller that owns retry semantics
+  (none exists yet — this app's compose UI is out of this change's scope)
+  passes the same key across attempts of one logical send; when omitted,
+  `HttpConversationRepository` generates a fresh one per call, tested
+  explicitly (`two calls with no explicit key generate two different
+  keys`) so a future caller cannot assume the repository itself dedupes
+  retries — only the caller-supplied-key path does. (3) `ConversationRepositoryException.notFound`
+  is a dedicated bool, not inferred from `code == 'not_found'` — 404 and
+  403 are both real, distinct outcomes the server deliberately keeps apart
+  (404 for "does not exist or you cannot see it", 403 nowhere in this
+  feature's actual responses today but kept distinguishable in the
+  exception shape for the day a caller does need to tell "hidden" from
+  "forbidden" apart), and collapsing them into one string comparison at
+  every call site is exactly the kind of drift the server route module's
+  own docstring calls out for the identical reason (`404`, never `403`,
+  for a hidden entity — see `_context_not_found`/`_conversation_not_found`
+  in `routes/conversations.py`). Tests:
+  `test/features/conversations/data/http_conversation_repository_test.dart`,
+  against a real locally-bound `HttpServer` (no TLS, same reasoning
+  `http_auth_gateway_test.dart` gives for stopping there) — list/get/list
+  messages/post message (including the duplicate-`Idempotency-Key` retry
+  returning the original message instead of creating a second one) and
+  create conversation (including the `mixed_project` 400, asserted via
+  `ConversationRepositoryException.code`, not a string-matched message),
+  plus auth failure, a connection that accepts and never answers (bounded
+  timeout), a non-JSON body, and 404 vs. 403 asserted as genuinely
+  different outcomes rather than both just "an error was thrown".
