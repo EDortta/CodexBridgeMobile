@@ -2,6 +2,7 @@ import 'package:codex_bridge_mobile/core/design/app_theme.dart';
 import 'package:codex_bridge_mobile/core/format/relative_moment.dart';
 import 'package:codex_bridge_mobile/features/missions/data/mock_mission_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission.dart';
+import 'package:codex_bridge_mobile/features/missions/domain/mission_explanation.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/mission_repository.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/mission_detail_screen.dart';
 import 'package:codex_bridge_mobile/features/missions/presentation/mission_providers.dart';
@@ -250,4 +251,7 @@ class _FailingMissionRepository implements MissionRepository {
   @override
   Future<Mission> cancel(String missionId, {required String reason}) =>
       throw Exception('boom');
+
+  @override
+  Future<MissionExplanation> explain(String missionId) => throw Exception('boom');
 }

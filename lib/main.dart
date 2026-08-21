@@ -5,6 +5,7 @@ import 'app/app.dart';
 import 'app/app_router.dart';
 import 'app/auth_gateway_binding.dart';
 import 'app/gateway_context_binding.dart';
+import 'app/mission_repository_binding.dart';
 
 /// Process entry point.
 ///
@@ -13,7 +14,11 @@ import 'app/gateway_context_binding.dart';
 /// one.
 void main() => runApp(
   ProviderScope(
-    overrides: <Override>[authGatewayBinding, gatewayContextBinding],
+    overrides: <Override>[
+      authGatewayBinding,
+      gatewayContextBinding,
+      missionRepositoryBinding,
+    ],
     child: CodexBridgeMobileApp(router: createAppRouter()),
   ),
 );
