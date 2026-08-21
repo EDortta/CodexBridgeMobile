@@ -12,7 +12,8 @@ import '../domain/session.dart';
 /// documented interim, in the shape every other feature here already uses
 /// (`MockAccountRepository`, `MockMissionRepository`).
 ///
-/// It grants a session for any non-blank access code. What it *does* exercise
+/// It grants a session for any non-blank username and password, and never
+/// checks either against a real registry. What it *does* exercise
 /// for real is the part that is this repository's to get right: the lifecycle
 /// above it — the windows, the renewal, the expiry, the sign-out — and the
 /// Keystore-backed storage under it. Replacing this file with an HTTP client
@@ -37,9 +38,11 @@ class MockAuthGateway implements AuthGateway {
   static const Duration refreshLifetime = Duration(days: 7);
 
   @override
-  Future<AuthOutcome> signIn(String accessCode) async {
-    final String code = accessCode.trim();
-    if (code.isEmpty) {
+  Future<AuthOutcome> signIn({
+    required String username,
+    required String password,
+  }) async {
+    if (username.trim().isEmpty || password.isEmpty) {
       return const AuthDenied(AuthFailure.missingCredential);
     }
 

@@ -58,10 +58,10 @@ class SessionController extends AsyncNotifier<AuthState> {
     return _restore(stored);
   }
 
-  /// Signs in with [accessCode].
+  /// Signs in with [username] and [password].
   ///
-  /// The code is passed straight to the gateway and never kept: it is not
-  /// stored, not held in state, and not part of any message this app renders.
+  /// Both are passed straight to the gateway and never kept: neither is
+  /// stored, held in state, or part of any message this app renders.
   ///
   /// Only from [SignedOut] with no sign-in already in flight, which is what
   /// keeps the invariant above total. A sign-in over a held session would
@@ -72,7 +72,10 @@ class SessionController extends AsyncNotifier<AuthState> {
   /// outcomes race to write `state`, and whichever resolves last wins even if
   /// it is the refusal — so the guard excludes `signingIn: true` too, not just
   /// [SignedIn].
-  Future<void> signIn(String accessCode) async {
+  Future<void> signIn({
+    required String username,
+    required String password,
+  }) async {
     if (state.valueOrNull case SignedOut(
       :final SignedOutReason reason,
       :final bool sessionMayRemainOnDevice,
@@ -93,7 +96,7 @@ class SessionController extends AsyncNotifier<AuthState> {
 
       final AuthOutcome outcome = await ref
           .read(authGatewayProvider)
-          .signIn(accessCode);
+          .signIn(username: username, password: password);
 
       state = AsyncData<AuthState>(
         switch (outcome) {

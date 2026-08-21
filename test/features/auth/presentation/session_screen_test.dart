@@ -119,7 +119,8 @@ void main() {
       ),
     );
 
-    await tester.enterText(find.byType(TextField), 'an-access-code');
+    await tester.enterText(find.byType(TextField).at(0), 'an-operator');
+    await tester.enterText(find.byType(TextField).at(1), 'an-access-code');
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
 
@@ -149,12 +150,14 @@ void main() {
     }
   });
 
-  testWidgets('the access code is masked while it is typed', (
+  testWidgets('the password is masked while it is typed', (
     WidgetTester tester,
   ) async {
     await pumpSession(tester);
 
-    final TextField field = tester.widget<TextField>(find.byType(TextField));
+    final TextField field = tester.widget<TextField>(
+      find.byType(TextField).at(1),
+    );
 
     expect(field.obscureText, isTrue);
     expect(field.autocorrect, isFalse);
@@ -217,7 +220,8 @@ void main() {
   ) async {
     await pumpSession(tester, keystore: WriteRefusingSecureKeyValueStore.new);
 
-    await tester.enterText(find.byType(TextField), 'an-access-code');
+    await tester.enterText(find.byType(TextField).at(0), 'an-operator');
+    await tester.enterText(find.byType(TextField).at(1), 'an-access-code');
     await tester.tap(find.widgetWithText(FilledButton, 'Sign in'));
     await tester.pumpAndSettle();
 
@@ -231,6 +235,20 @@ void main() {
       reason:
           'the button stayed disabled behind a spinner that never stops, and '
           'nothing on screen said why',
+    );
+
+    // The password is a credential, cleared the moment it is handed to the
+    // gateway. The username is not a secret, and is left in place so the
+    // operator can retry a mistyped password without retyping who they are.
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(0)).controller?.text,
+      'an-operator',
+      reason: 'the username is not a credential and survives a failed sign-in',
+    );
+    expect(
+      tester.widget<TextField>(find.byType(TextField).at(1)).controller?.text,
+      isEmpty,
+      reason: 'the password is cleared as soon as it reaches the gateway',
     );
   });
 

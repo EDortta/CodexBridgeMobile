@@ -111,8 +111,10 @@ class _DelayedRenewalGateway implements AuthGateway {
   final DateTime Function() _now;
 
   @override
-  Future<AuthOutcome> signIn(String accessCode) async =>
-      const AuthDenied(AuthFailure.rejectedCredential);
+  Future<AuthOutcome> signIn({
+    required String username,
+    required String password,
+  }) async => const AuthDenied(AuthFailure.rejectedCredential);
 
   @override
   Future<AuthOutcome> renew(Session session) async {

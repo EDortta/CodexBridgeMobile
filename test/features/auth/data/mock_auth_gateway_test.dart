@@ -12,21 +12,36 @@ void main() {
   final DateTime now = DateTime.utc(2026, 8, 14, 12);
   final MockAuthGateway gateway = MockAuthGateway(() => now);
 
-  test('a blank access code is refused, and named', () async {
+  test('a blank username or a blank password is refused, and named', () async {
     for (final String blank in <String>['', '   ', '\n']) {
-      final AuthOutcome outcome = await gateway.signIn(blank);
-
-      expect(outcome, isA<AuthDenied>());
+      final AuthOutcome usernameOutcome = await gateway.signIn(
+        username: blank,
+        password: 'a-password',
+      );
+      expect(usernameOutcome, isA<AuthDenied>());
       expect(
-        (outcome as AuthDenied).reason,
+        (usernameOutcome as AuthDenied).reason,
         AuthFailure.missingCredential,
-        reason: 'a blank code read as a wrong code, which is a different fix',
+        reason: 'a blank username read as a wrong one, which is a different fix',
       );
     }
+
+    final AuthOutcome passwordOutcome = await gateway.signIn(
+      username: 'an-operator',
+      password: '',
+    );
+    expect(passwordOutcome, isA<AuthDenied>());
+    expect(
+      (passwordOutcome as AuthDenied).reason,
+      AuthFailure.missingCredential,
+    );
   });
 
   test('a granted session carries both windows, opened from now', () async {
-    final AuthOutcome outcome = await gateway.signIn('an-access-code');
+    final AuthOutcome outcome = await gateway.signIn(
+      username: 'an-operator',
+      password: 'an-access-code',
+    );
 
     final Session session = (outcome as AuthGranted).session;
     expect(session.expiresAt, now.add(MockAuthGateway.accessLifetime));
@@ -48,7 +63,9 @@ void main() {
     // A refresh window that slid forward on every renewal would never close,
     // and a lost device would hold a session indefinitely.
     final Session issued =
-        ((await gateway.signIn('code')) as AuthGranted).session;
+        ((await gateway.signIn(username: 'an-operator', password: 'code'))
+                as AuthGranted)
+            .session;
     final DateTime later = now.add(const Duration(hours: 2));
 
     final AuthOutcome outcome = await MockAuthGateway(() => later).renew(issued);
@@ -61,7 +78,9 @@ void main() {
 
   test('a session past its refresh window is not renewed', () async {
     final Session issued =
-        ((await gateway.signIn('code')) as AuthGranted).session;
+        ((await gateway.signIn(username: 'an-operator', password: 'code'))
+                as AuthGranted)
+            .session;
     final DateTime tooLate = now
         .add(MockAuthGateway.refreshLifetime)
         .add(const Duration(seconds: 1));
