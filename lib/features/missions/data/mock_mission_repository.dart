@@ -1,4 +1,5 @@
 import '../domain/mission.dart';
+import '../domain/mission_explanation.dart';
 import '../domain/mission_repository.dart';
 import '../domain/mission_risk.dart';
 import '../domain/mission_stage.dart';
@@ -71,6 +72,20 @@ class MockMissionRepository implements MissionRepository {
       notAllowedMessage: 'This mission cannot be cancelled from its current state.',
       newState: MissionState.cancelled,
       description: 'Cancelled by You: ${reason.trim()}',
+    );
+  }
+
+  @override
+  Future<MissionExplanation> explain(String missionId) async {
+    final Mission? mission = _missions[missionId];
+    if (mission == null) {
+      throw MissionNotFoundException(missionId);
+    }
+    return MissionExplanation(
+      missionId: mission.id,
+      state: mission.state.name,
+      reasons: mission.explanation,
+      generatedAt: _clock(),
     );
   }
 
