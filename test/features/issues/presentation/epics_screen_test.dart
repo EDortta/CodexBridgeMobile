@@ -177,4 +177,49 @@ class _FakeIssueRepository implements IssueRepository {
       ),
     );
   }
+
+  @override
+  Future<Epic> createEpic({
+    required String projectId,
+    required String title,
+    String? description,
+    IssueStatus? status,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProjectIssue> createIssue({
+    required String projectId,
+    required String title,
+    String? epicId,
+    String? description,
+    IssueStatus? status,
+    IssuePriority? priority,
+    List<String>? labels,
+    String? assigneeUserId,
+    String? assigneeEmail,
+    List<String>? dependencies,
+    String? blockedReason,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProjectIssue> updateIssue({
+    required String issueId,
+    required int revision,
+    String? title,
+    String? description,
+    IssueStatus? status,
+    IssuePriority? priority,
+    List<String>? labels,
+    String? assigneeUserId,
+    String? assigneeEmail,
+    List<String>? dependencies,
+    String? blockedReason,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProjectIssue> linkIssueToEpic({
+    required String epicId,
+    required String issueId,
+    required int issueRevision,
+  }) => throw UnimplementedError();
 }

@@ -1,4 +1,6 @@
 import '../domain/epic.dart';
+import '../domain/issue_change_summary.dart';
+import '../domain/issue_history_event.dart';
 import '../domain/issue_repository.dart';
 import '../domain/issue_status.dart';
 import '../domain/project_issue.dart';
@@ -22,15 +24,35 @@ import '../domain/project_issue.dart';
 /// *adds* fields to them. `codex-bridge-cli` deliberately carries no issue
 /// or epic — `project_dashboard_screen_test.dart` pins its "No open issues
 /// for this project." empty state.
+///
+/// **Since #30**, this is also the write path exercised by the app in a
+/// debug build: [createEpic], [createIssue], [updateIssue] and
+/// [linkIssueToEpic] keep every seeded and created record in memory for the
+/// lifetime of the process, the same "stateful across a session" shape
+/// `MockMissionRepository` uses for `pause`/`resume`/`cancel`. Every method
+/// body below runs to completion with no `await` between reading `_issues`/
+/// `_epics` and writing them back — the same reasoning
+/// `MockMissionRepository._applyGuarded`'s doc comment gives for why that
+/// is enough to close the lost-update race #28's council pass caught: an
+/// `async` function in Dart runs synchronously up to its first `await`, so
+/// two back-to-back calls with no `await` in between never interleave.
 class MockIssueRepository implements IssueRepository {
-  MockIssueRepository()
-    : _epics = <String, Epic>{for (final Epic epic in _seedEpics()) epic.id: epic},
-      _issues = <String, ProjectIssue>{
-        for (final ProjectIssue issue in _seedIssues()) issue.id: issue,
-      };
+  MockIssueRepository({this._now = DateTime.now}) {
+    for (final Epic epic in _seedEpics()) {
+      _epics[epic.id] = epic;
+    }
+    for (final ProjectIssue issue in _seedIssues()) {
+      _issues[issue.id] = issue;
+    }
+  }
 
-  final Map<String, Epic> _epics;
-  final Map<String, ProjectIssue> _issues;
+  final DateTime Function() _now;
+
+  final Map<String, Epic> _epics = <String, Epic>{};
+  final Map<String, ProjectIssue> _issues = <String, ProjectIssue>{};
+
+  int _nextEpicSuffix = 1;
+  int _nextIssueSuffix = 1;
 
   @override
   Future<List<ProjectIssue>> loadIssues() async =>
@@ -55,6 +77,290 @@ class MockIssueRepository implements IssueRepository {
       throw EpicNotFoundException(epicId);
     }
     return epic;
+  }
+
+  @override
+  Future<Epic> createEpic({
+    required String projectId,
+    required String title,
+    String? description,
+    IssueStatus? status,
+  }) async {
+    final String id = 'epic-mock-${_nextEpicSuffix++}';
+    final Epic epic = Epic(
+      id: id,
+      projectId: projectId,
+      title: title,
+      status: status ?? IssueStatus.todo,
+      createdAt: _now(),
+      summary: description ?? '',
+    );
+    _epics[id] = epic;
+    return epic;
+  }
+
+  @override
+  Future<ProjectIssue> createIssue({
+    required String projectId,
+    required String title,
+    String? epicId,
+    String? description,
+    IssueStatus? status,
+    IssuePriority? priority,
+    List<String>? labels,
+    String? assigneeUserId,
+    String? assigneeEmail,
+    List<String>? dependencies,
+    String? blockedReason,
+  }) async {
+    final IssueStatus resolvedStatus = status ?? IssueStatus.todo;
+    final String? resolvedBlockedReason = resolvedStatus == IssueStatus.blocked
+        ? blockedReason
+        : null;
+    // Same invariant `Mission.copyWith` enforces for `MissionState.blocked`
+    // (`features/missions/`): a guard inside the write itself, not only in
+    // `IssueFormValidation` at the caller (`design-standards.md` §3), so a
+    // future caller that skips the form's own check still cannot create a
+    // blocked issue with no stated cause.
+    if (resolvedStatus == IssueStatus.blocked && resolvedBlockedReason == null) {
+      throw ArgumentError.value(
+        blockedReason,
+        'blockedReason',
+        'A blocked issue requires a reason.',
+      );
+    }
+    if (epicId != null && !_epics.containsKey(epicId)) {
+      throw EpicNotFoundException(epicId);
+    }
+
+    final String id = 'issue-mock-${_nextIssueSuffix++}';
+    final DateTime createdAt = _now();
+    final ProjectIssue issue = ProjectIssue(
+      id: id,
+      projectId: projectId,
+      title: title,
+      priority: priority ?? IssuePriority.normal,
+      status: resolvedStatus,
+      createdAt: createdAt,
+      assignee: assigneeEmail ?? assigneeUserId ?? 'Unassigned',
+      epicId: epicId,
+      summary: description ?? '',
+      blockedReason: resolvedBlockedReason,
+      labels: labels ?? const <String>[],
+      dependencies: dependencies ?? const <String>[],
+      revision: 1,
+      history: <IssueHistoryEvent>[
+        IssueHistoryEvent(
+          id: '$id-history-1',
+          description: 'Issue created.',
+          actor: 'You',
+          occurredAt: createdAt,
+        ),
+      ],
+    );
+    _issues[id] = issue;
+
+    if (epicId != null) {
+      final Epic epic = _epics[epicId]!;
+      _epics[epicId] = _epicWithIssue(epic, id);
+    }
+
+    return issue;
+  }
+
+  @override
+  Future<ProjectIssue> updateIssue({
+    required String issueId,
+    required int revision,
+    String? title,
+    String? description,
+    IssueStatus? status,
+    IssuePriority? priority,
+    List<String>? labels,
+    String? assigneeUserId,
+    String? assigneeEmail,
+    List<String>? dependencies,
+    String? blockedReason,
+  }) async {
+    final ProjectIssue? current = _issues[issueId];
+    if (current == null) {
+      throw IssueNotFoundException(issueId);
+    }
+    // The guard belongs inside the write, not the caller
+    // (`design-standards.md` §3) — this is what makes stale-write detection
+    // real rather than a client-side convention every caller must remember.
+    if (current.revision != revision) {
+      throw StaleIssueRevisionException(
+        'This issue changed since you last read it.',
+      );
+    }
+
+    final IssueStatus resolvedStatus = status ?? current.status;
+    final String? resolvedBlockedReason = resolvedStatus == IssueStatus.blocked
+        ? (blockedReason ?? current.blockedReason)
+        : null;
+    if (resolvedStatus == IssueStatus.blocked && resolvedBlockedReason == null) {
+      throw ArgumentError.value(
+        blockedReason,
+        'blockedReason',
+        'A blocked issue requires a reason.',
+      );
+    }
+
+    final DateTime occurredAt = _now();
+    final ProjectIssue updated = ProjectIssue(
+      id: current.id,
+      projectId: current.projectId,
+      title: title ?? current.title,
+      priority: priority ?? current.priority,
+      status: resolvedStatus,
+      createdAt: current.createdAt,
+      assignee: assigneeEmail ?? assigneeUserId ?? current.assignee,
+      epicId: current.epicId,
+      summary: description ?? current.summary,
+      blockedReason: resolvedBlockedReason,
+      labels: labels ?? current.labels,
+      dependencies: dependencies ?? current.dependencies,
+      revision: current.revision + 1,
+      history: current.history,
+    );
+
+    final List<String> changes = describeIssueChanges(
+      before: current,
+      after: updated,
+    );
+    final ProjectIssue withHistory = changes.isEmpty
+        ? updated
+        : _appendHistory(updated, changes, occurredAt);
+
+    _issues[issueId] = withHistory;
+    return withHistory;
+  }
+
+  @override
+  Future<ProjectIssue> linkIssueToEpic({
+    required String epicId,
+    required String issueId,
+    required int issueRevision,
+  }) async {
+    final ProjectIssue? current = _issues[issueId];
+    if (current == null) {
+      throw IssueNotFoundException(issueId);
+    }
+    if (current.revision != issueRevision) {
+      throw StaleIssueRevisionException(
+        'This issue changed since you last read it.',
+      );
+    }
+    final Epic? targetEpic = _epics[epicId];
+    if (targetEpic == null) {
+      throw EpicNotFoundException(epicId);
+    }
+
+    final String? previousEpicId = current.epicId;
+    final DateTime occurredAt = _now();
+    final ProjectIssue updated = ProjectIssue(
+      id: current.id,
+      projectId: current.projectId,
+      title: current.title,
+      priority: current.priority,
+      status: current.status,
+      createdAt: current.createdAt,
+      assignee: current.assignee,
+      epicId: epicId,
+      summary: current.summary,
+      blockedReason: current.blockedReason,
+      labels: current.labels,
+      dependencies: current.dependencies,
+      revision: current.revision + 1,
+      history: current.history,
+    );
+    final ProjectIssue withHistory = _appendHistory(
+      updated,
+      describeIssueChanges(before: current, after: updated),
+      occurredAt,
+    );
+    _issues[issueId] = withHistory;
+
+    if (previousEpicId != null && previousEpicId != epicId) {
+      final Epic? previousEpic = _epics[previousEpicId];
+      if (previousEpic != null) {
+        _epics[previousEpicId] = _epicWithoutIssue(previousEpic, issueId);
+      }
+    }
+    _epics[epicId] = _epicWithIssue(targetEpic, issueId);
+
+    return withHistory;
+  }
+
+  static ProjectIssue _appendHistory(
+    ProjectIssue issue,
+    List<String> changes,
+    DateTime occurredAt,
+  ) {
+    if (changes.isEmpty) {
+      return issue;
+    }
+    final List<IssueHistoryEvent> history = <IssueHistoryEvent>[
+      ...issue.history,
+      for (int i = 0; i < changes.length; i++)
+        IssueHistoryEvent(
+          id: '${issue.id}-history-${issue.history.length + i + 1}',
+          description: changes[i],
+          actor: 'You',
+          occurredAt: occurredAt,
+        ),
+    ];
+    return ProjectIssue(
+      id: issue.id,
+      projectId: issue.projectId,
+      title: issue.title,
+      priority: issue.priority,
+      status: issue.status,
+      createdAt: issue.createdAt,
+      assignee: issue.assignee,
+      epicId: issue.epicId,
+      summary: issue.summary,
+      blockedReason: issue.blockedReason,
+      labels: issue.labels,
+      dependencies: issue.dependencies,
+      revision: issue.revision,
+      history: history,
+    );
+  }
+
+  static Epic _epicWithIssue(Epic epic, String issueId) {
+    if (epic.issueIds.contains(issueId)) {
+      return epic;
+    }
+    return Epic(
+      id: epic.id,
+      projectId: epic.projectId,
+      title: epic.title,
+      status: epic.status,
+      priority: epic.priority,
+      createdAt: epic.createdAt,
+      summary: epic.summary,
+      blockedReason: epic.blockedReason,
+      issueIds: <String>[...epic.issueIds, issueId],
+    );
+  }
+
+  static Epic _epicWithoutIssue(Epic epic, String issueId) {
+    if (!epic.issueIds.contains(issueId)) {
+      return epic;
+    }
+    return Epic(
+      id: epic.id,
+      projectId: epic.projectId,
+      title: epic.title,
+      status: epic.status,
+      priority: epic.priority,
+      createdAt: epic.createdAt,
+      summary: epic.summary,
+      blockedReason: epic.blockedReason,
+      issueIds: epic.issueIds.where((String id) => id != issueId).toList(growable: false),
+    );
   }
 
   static List<Epic> _seedEpics() => <Epic>[

@@ -8,6 +8,7 @@ import '../../../core/format/utc_moment.dart';
 import '../../../core/navigation/app_destinations.dart';
 import '../../../core/presentation/inline_badge.dart';
 import '../domain/epic.dart';
+import '../domain/issue_history_event.dart';
 import '../domain/issue_repository.dart';
 import '../domain/project_issue.dart';
 import 'issue_providers.dart';
@@ -29,6 +30,22 @@ class IssueDetailScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Issue'),
         actions: <Widget>[
+          // #30: only offered once the issue actually loaded — editing
+          // needs its current `revision` for the stale-write guard, so
+          // there is nothing to edit yet while `detail` is loading or
+          // failed.
+          if (detail.hasValue)
+            IconButton(
+              key: const Key('editIssueButton'),
+              onPressed: () => context.go(
+                Uri(
+                  path: AppDestination.projects.detailPath,
+                  queryParameters: <String, String>{'editIssue': issueId},
+                ).toString(),
+              ),
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit issue',
+            ),
           IconButton(
             onPressed: () {
               ref.invalidate(issueDetailProvider(issueId));
@@ -80,7 +97,62 @@ class _IssueDetailBody extends StatelessWidget {
           _EpicLinkCard(epicId: epicId),
           const SizedBox(height: AppSpacing.md),
         ],
+        // #30's "changes preserve history" — every recorded change, newest
+        // first so the operator sees what just happened without scrolling.
+        _HistoryCard(history: issue.history),
       ],
+    );
+  }
+}
+
+class _HistoryCard extends StatelessWidget {
+  const _HistoryCard({required this.history});
+
+  final List<IssueHistoryEvent> history;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final OperationalTextTheme operationalText = theme
+        .extension<OperationalTextTheme>()!;
+    final List<IssueHistoryEvent> newestFirst = history.reversed.toList(growable: false);
+
+    return Card(
+      elevation: AppElevation.card,
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.card),
+      child: Padding(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(AppIcons.activity, size: 18, color: theme.colorScheme.primary),
+                const SizedBox(width: AppSpacing.xs),
+                Text('History', style: theme.textTheme.titleLarge),
+              ],
+            ),
+            const SizedBox(height: AppSpacing.sm),
+            if (newestFirst.isEmpty)
+              Text('No recorded changes yet.', style: theme.textTheme.bodyMedium)
+            else
+              for (final IssueHistoryEvent event in newestFirst)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(event.description, style: theme.textTheme.bodyMedium),
+                      Text(
+                        '${event.actor} · ${UtcMoment.day(event.occurredAt)}',
+                        style: operationalText.metadata,
+                      ),
+                    ],
+                  ),
+                ),
+          ],
+        ),
+      ),
     );
   }
 }

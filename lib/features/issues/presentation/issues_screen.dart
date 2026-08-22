@@ -41,6 +41,19 @@ class IssuesScreen extends ConsumerWidget {
               ).toString(),
             ),
           ),
+          // #30: creation starts from this project's own Issue view, so the
+          // new issue is scoped correctly without an extra project picker.
+          IconButton(
+            key: const Key('newIssueButton'),
+            icon: const Icon(Icons.add_rounded),
+            tooltip: 'New issue',
+            onPressed: () => context.go(
+              Uri(
+                path: AppDestination.projects.detailPath,
+                queryParameters: <String, String>{'newIssue': projectId},
+              ).toString(),
+            ),
+          ),
         ],
       ),
       body: AsyncStateView<List<ProjectIssue>>(

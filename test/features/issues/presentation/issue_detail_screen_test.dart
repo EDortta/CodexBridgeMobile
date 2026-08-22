@@ -2,6 +2,7 @@ import 'package:codex_bridge_mobile/core/design/app_theme.dart';
 import 'package:codex_bridge_mobile/features/issues/data/mock_issue_repository.dart';
 import 'package:codex_bridge_mobile/features/issues/domain/epic.dart';
 import 'package:codex_bridge_mobile/features/issues/domain/issue_repository.dart';
+import 'package:codex_bridge_mobile/features/issues/domain/issue_status.dart';
 import 'package:codex_bridge_mobile/features/issues/domain/project_issue.dart';
 import 'package:codex_bridge_mobile/features/issues/presentation/issue_detail_screen.dart';
 import 'package:codex_bridge_mobile/features/issues/presentation/issue_providers.dart';
@@ -95,6 +96,48 @@ void main() {
     expect(find.text('This issue could not be found.'), findsOneWidget);
   });
 
+  // #30.
+  testWidgets('offers an Edit action once the issue has loaded', (
+    WidgetTester tester,
+  ) async {
+    await pumpDetail(tester, 'issue-epics-browser');
+
+    expect(find.byKey(const Key('editIssueButton')), findsOneWidget);
+  });
+
+  testWidgets('offers no Edit action for an issue that failed to load', (
+    WidgetTester tester,
+  ) async {
+    await pumpDetail(tester, 'does-not-exist');
+
+    expect(find.byKey(const Key('editIssueButton')), findsNothing);
+  });
+
+  testWidgets('a freshly seeded issue shows no recorded history', (
+    WidgetTester tester,
+  ) async {
+    await pumpDetail(tester, 'issue-epics-browser');
+
+    expect(find.text('History'), findsOneWidget);
+    expect(find.text('No recorded changes yet.'), findsOneWidget);
+  });
+
+  testWidgets('an edited issue shows its change in the History card', (
+    WidgetTester tester,
+  ) async {
+    final MockIssueRepository repository = MockIssueRepository();
+    final ProjectIssue before = await repository.loadIssue('flaky-connection-test');
+    await repository.updateIssue(
+      issueId: 'flaky-connection-test',
+      revision: before.revision,
+      priority: IssuePriority.critical,
+    );
+
+    await pumpDetail(tester, 'flaky-connection-test', repository: repository);
+
+    expect(find.text('Priority changed from High to Critical.'), findsOneWidget);
+  });
+
   testWidgets('a non-not-found repository failure shows the generic message', (
     WidgetTester tester,
   ) async {
@@ -123,4 +166,49 @@ class _FailingIssueRepository implements IssueRepository {
 
   @override
   Future<Epic> loadEpic(String epicId) => throw Exception('boom');
+
+  @override
+  Future<Epic> createEpic({
+    required String projectId,
+    required String title,
+    String? description,
+    IssueStatus? status,
+  }) => throw Exception('boom');
+
+  @override
+  Future<ProjectIssue> createIssue({
+    required String projectId,
+    required String title,
+    String? epicId,
+    String? description,
+    IssueStatus? status,
+    IssuePriority? priority,
+    List<String>? labels,
+    String? assigneeUserId,
+    String? assigneeEmail,
+    List<String>? dependencies,
+    String? blockedReason,
+  }) => throw Exception('boom');
+
+  @override
+  Future<ProjectIssue> updateIssue({
+    required String issueId,
+    required int revision,
+    String? title,
+    String? description,
+    IssueStatus? status,
+    IssuePriority? priority,
+    List<String>? labels,
+    String? assigneeUserId,
+    String? assigneeEmail,
+    List<String>? dependencies,
+    String? blockedReason,
+  }) => throw Exception('boom');
+
+  @override
+  Future<ProjectIssue> linkIssueToEpic({
+    required String epicId,
+    required String issueId,
+    required int issueRevision,
+  }) => throw Exception('boom');
 }
