@@ -43,6 +43,18 @@ class AccountScreen extends ConsumerWidget {
                 subtitle: const Text('Sign in, renew, or sign out'),
                 onTap: () => context.go(AppRoutes.session),
               ),
+              ListTile(
+                leading: const Icon(AppIcons.audit),
+                title: const Text('Audit trail'),
+                // "In this app session", not "on this device": the trail is
+                // in-memory until a server-side audit API exists, and the
+                // tile must not promise durability a restart erases
+                // (council 2026-08-26, the security lens, round 1).
+                subtitle: const Text(
+                  'Sensitive operations recorded in this app session',
+                ),
+                onTap: () => context.go(AppRoutes.audit),
+              ),
             ],
           );
         },

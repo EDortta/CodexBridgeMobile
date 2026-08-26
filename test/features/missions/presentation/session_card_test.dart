@@ -1,3 +1,5 @@
+import 'package:codex_bridge_mobile/core/audit/audit_event.dart';
+import 'package:codex_bridge_mobile/core/audit/audit_providers.dart';
 import 'package:codex_bridge_mobile/core/design/app_theme.dart';
 import 'package:codex_bridge_mobile/core/gateway/gateway_context.dart';
 import 'package:codex_bridge_mobile/core/gateway/gateway_context_provider.dart';
@@ -80,4 +82,54 @@ void main() {
     expect(find.widgetWithText(OutlinedButton, 'Resume'), findsOneWidget);
     expect(find.widgetWithText(OutlinedButton, 'Pause'), findsNothing);
   });
+
+  testWidgets(
+    'backing out of the Stop confirmation records a cancelled audit event (#46)',
+    (WidgetTester tester) async {
+      final ProviderContainer container = ProviderContainer(
+        overrides: <Override>[
+          auditActorProvider.overrideWithValue('op-42'),
+          gatewayContextProvider.overrideWith(
+            (Ref ref) async => GatewayContext(
+              server: Uri.parse('https://bridge.example.com'),
+              accessToken: 'access-token',
+            ),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: Scaffold(
+              body: SessionCard(
+                session: sessionWith(state: 'running'),
+                busy: false,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Stop'));
+      await tester.pumpAndSettle();
+      expect(find.text('Stop this session?'), findsOneWidget);
+      await tester.tap(find.widgetWithText(TextButton, 'Cancel'));
+      await tester.pumpAndSettle();
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.area, AuditArea.liveSession);
+      expect(event.action, 'stop');
+      expect(event.target, 's-1');
+      expect(event.actor, 'op-42');
+      expect(event.result, AuditResult.cancelled);
+    },
+  );
 }

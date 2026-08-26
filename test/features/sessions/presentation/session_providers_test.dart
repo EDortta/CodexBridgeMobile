@@ -1,3 +1,5 @@
+import 'package:codex_bridge_mobile/core/audit/audit_event.dart';
+import 'package:codex_bridge_mobile/core/audit/audit_providers.dart';
 import 'package:codex_bridge_mobile/core/gateway/gateway_context.dart';
 import 'package:codex_bridge_mobile/core/gateway/gateway_context_provider.dart';
 import 'package:codex_bridge_mobile/features/missions/domain/live_session.dart';
@@ -322,4 +324,258 @@ void main() {
       );
     },
   );
+
+  // #46: every control outcome lands on the cross-cutting audit trail.
+  group('audit trail', () {
+    final LiveSession running = LiveSession.fromJson(<String, Object?>{
+      'id': 's-1',
+      'projectId': 'codexbridge',
+      'executorId': 'devel3',
+      'instruction': 'Investigate the failing task',
+      'state': 'running',
+      'priority': 'normal',
+      'revision': 7,
+      'createdAt': '2026-08-15T12:00:00Z',
+    });
+
+    ProviderContainer auditedContainer({
+      required LiveSessionRepository repository,
+      GatewayContext? gatewayContext,
+    }) {
+      final ProviderContainer container = ProviderContainer(
+        overrides: <Override>[
+          auditActorProvider.overrideWithValue('op-42'),
+          gatewayContextProvider.overrideWith(
+            (Ref ref) async => gatewayContext,
+          ),
+          liveSessionRepositoryProvider.overrideWithValue(repository),
+        ],
+      );
+      addTearDown(container.dispose);
+      return container;
+    }
+
+    test('a successful control records success with the actor', () async {
+      final ProviderContainer container = auditedContainer(
+        repository: FakeSessionRepository(
+          sessions: <LiveSession>[running],
+          controlResult: running,
+        ),
+        gatewayContext: GatewayContext(
+          server: Uri.parse('https://bridge.example.com'),
+          accessToken: 'access-token',
+        ),
+      );
+      await container.read(remoteSessionsProvider.future);
+
+      await container
+          .read(remoteSessionsProvider.notifier)
+          .control('s-1', LiveSessionControlAction.stop);
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.area, AuditArea.liveSession);
+      expect(event.action, 'stop');
+      expect(event.target, 's-1');
+      expect(event.actor, 'op-42');
+      expect(event.result, AuditResult.success);
+    });
+
+    test('a control refused by the gateway records failure with the reason', () async {
+      final ProviderContainer container = auditedContainer(
+        repository: _ControlRefusedRepository(
+          sessions: <LiveSession>[running],
+        ),
+        gatewayContext: GatewayContext(
+          server: Uri.parse('https://bridge.example.com'),
+          accessToken: 'access-token',
+        ),
+      );
+      await container.read(remoteSessionsProvider.future);
+
+      await container
+          .read(remoteSessionsProvider.notifier)
+          .control('s-1', LiveSessionControlAction.stop);
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.result, AuditResult.failure);
+      expect(event.failureReason, 'The gateway refused the stop.');
+    });
+
+    test('a control stopped by a missing gateway context records failure', () async {
+      final ProviderContainer container = auditedContainer(
+        repository: FakeSessionRepository(sessions: <LiveSession>[running]),
+      );
+      await container.read(remoteSessionsProvider.future);
+
+      await container
+          .read(remoteSessionsProvider.notifier)
+          .control('s-1', LiveSessionControlAction.pause);
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.action, 'pause');
+      expect(event.result, AuditResult.failure);
+      expect(
+        event.failureReason,
+        'No server selected or no signed-in session.',
+      );
+      // Nobody needs to be signed in for the refusal itself to be a fact.
+      expect(event.actor, 'op-42');
+    });
+
+    test('a malformed success payload still clears pending and records failure', () async {
+      // council 2026-08-26, the adversarial user, round 1: a 200 whose body
+      // fails `LiveSession.fromJson` used to escape the repository-typed
+      // catch — `pending` stayed stuck and no failure was recorded.
+      final ProviderContainer container = auditedContainer(
+        repository: _MalformedPayloadRepository(
+          sessions: <LiveSession>[running],
+        ),
+        gatewayContext: GatewayContext(
+          server: Uri.parse('https://bridge.example.com'),
+          accessToken: 'access-token',
+        ),
+      );
+      await container.read(remoteSessionsProvider.future);
+
+      await container
+          .read(remoteSessionsProvider.notifier)
+          .control('s-1', LiveSessionControlAction.stop);
+
+      final RemoteSessionsState after =
+          container.read(remoteSessionsProvider).requireValue;
+      expect(after.pending, isEmpty,
+          reason: 'a failed control must re-enable its buttons');
+      expect(after.error, contains('invalid_session_payload'));
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.result, AuditResult.failure);
+      expect(event.failureReason, contains('invalid_session_payload'));
+    });
+
+    test('a malformed revision-fetch payload also clears pending and records failure', () async {
+      // council 2026-08-26, the adversarial user, round 2: the first fix's
+      // test only exercised the `controlSession` catch — a regression
+      // narrowing the *revision-fetch* catch back to the repository's own
+      // exception type would have passed the whole suite. This pins the
+      // cold-navigation half: the session is absent from the cached list,
+      // so `_revisionFor` falls back to `loadSessionDetail`, which throws.
+      final ProviderContainer container = auditedContainer(
+        repository: _MalformedDetailRepository(),
+        gatewayContext: GatewayContext(
+          server: Uri.parse('https://bridge.example.com'),
+          accessToken: 'access-token',
+        ),
+      );
+      await container.read(remoteSessionsProvider.future);
+
+      await container
+          .read(remoteSessionsProvider.notifier)
+          .control('s-cold', LiveSessionControlAction.pause);
+
+      final RemoteSessionsState after =
+          container.read(remoteSessionsProvider).requireValue;
+      expect(after.pending, isEmpty);
+      expect(after.error, contains('invalid_session_payload'));
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.action, 'pause');
+      expect(event.result, AuditResult.failure);
+      expect(event.failureReason, contains('invalid_session_payload'));
+    });
+
+    test('a suppressed duplicate tap records nothing extra', () async {
+      final FakeSessionRepository repository = FakeSessionRepository(
+        sessions: const <LiveSession>[],
+        detailResult: running,
+        controlResult: running,
+        detailDelay: const Duration(milliseconds: 50),
+      );
+      final ProviderContainer container = auditedContainer(
+        repository: repository,
+        gatewayContext: GatewayContext(
+          server: Uri.parse('https://bridge.example.com'),
+          accessToken: 'access-token',
+        ),
+      );
+      await container.read(remoteSessionsProvider.future);
+
+      final RemoteSessionsController controller = container.read(
+        remoteSessionsProvider.notifier,
+      );
+      await Future.wait(<Future<void>>[
+        controller.control('s-1', LiveSessionControlAction.pause),
+        controller.control('s-1', LiveSessionControlAction.pause),
+      ]);
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      expect(events, hasLength(1));
+    });
+  });
+}
+
+/// Answers the *revision-fetch* detail read with the exception a malformed
+/// 200 payload raises — the cached list stays empty so `_revisionFor` must
+/// take its fallback branch.
+class _MalformedDetailRepository extends FakeSessionRepository {
+  _MalformedDetailRepository() : super(sessions: const <LiveSession>[]);
+
+  @override
+  Future<LiveSession> loadSessionDetail({
+    required Uri server,
+    required String accessToken,
+    required String sessionId,
+  }) async {
+    throw const FormatException('invalid_session_payload');
+  }
+}
+
+/// Answers a control with the exception a malformed 200 payload raises.
+class _MalformedPayloadRepository extends FakeSessionRepository {
+  _MalformedPayloadRepository({required super.sessions});
+
+  @override
+  Future<LiveSession> controlSession({
+    required Uri server,
+    required String accessToken,
+    required String sessionId,
+    required int revision,
+    required LiveSessionControlAction action,
+  }) async {
+    throw const FormatException('invalid_session_payload');
+  }
+}
+
+/// Refuses every control the way a gateway would; loads pass through.
+class _ControlRefusedRepository extends FakeSessionRepository {
+  _ControlRefusedRepository({required super.sessions});
+
+  @override
+  Future<LiveSession> controlSession({
+    required Uri server,
+    required String accessToken,
+    required String sessionId,
+    required int revision,
+    required LiveSessionControlAction action,
+  }) async {
+    throw LiveSessionRepositoryException(
+      'The gateway refused the ${action.name}.',
+    );
+  }
 }

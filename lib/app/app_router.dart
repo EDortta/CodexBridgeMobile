@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../core/navigation/app_destinations.dart';
 import '../core/navigation/app_routes.dart';
 import '../features/account/presentation/account_screen.dart';
+import '../features/audit/presentation/audit_trail_screen.dart';
 import '../features/auth/presentation/session_screen.dart';
 import '../features/conversations/presentation/conversations_screen.dart';
 import '../features/decisions/presentation/decision_detail_screen.dart';
@@ -71,6 +72,11 @@ GoRouter createAppRouter({String initialLocation = AppRoutes.projects}) {
                         path: AppRoutes.sessionSegment,
                         builder: (BuildContext context, GoRouterState state) =>
                             const SessionScreen(),
+                      ),
+                      GoRoute(
+                        path: AppRoutes.auditSegment,
+                        builder: (BuildContext context, GoRouterState state) =>
+                            const AuditTrailScreen(),
                       ),
                     ],
                   ],

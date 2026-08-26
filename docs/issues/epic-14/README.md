@@ -12,7 +12,11 @@ See `epic.md` for why this folder is named `epic-14` rather than
 - [#45 — Create mobile threat model and security baseline](https://github.com/EDortta/CodexBridgeMobile/issues/45)
   — size M, **finished**. See `issues/45-create-mobile-threat-model-and-security-baseline.md`.
 - [#46 — Implement audit trail for sensitive operations](https://github.com/EDortta/CodexBridgeMobile/issues/46)
-  — size L, not started.
+  — size L, **first slice delivered** (core trail + decisions/live-sessions/
+  missions wiring + read-only viewer; auth lifecycle and the unbuilt
+  #37–#39 flows are next slices). Branch
+  `feature/gh-46/audit-trail-for-sensitive-operations`. See
+  `issues/46-implement-audit-trail-for-sensitive-operations.md`.
 
 ## The deliverable
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/audit/audit_event.dart';
+import '../../../core/audit/audit_providers.dart';
 import '../../../core/design/app_tokens.dart';
 import '../../../core/design/operational_text_theme.dart';
 import '../../../core/format/relative_moment.dart';
@@ -296,9 +298,12 @@ class _ActionsCard extends ConsumerWidget {
                       actionLabel: 'Approve',
                       commentLabel: 'Comment (optional)',
                       commentRequired: false,
-                      onSubmit: (String comment) => ref
-                          .read(decisionRepositoryProvider)
-                          .approve(decisionId, comment: comment.isEmpty ? null : comment),
+                      auditAction: 'approve',
+                      onSubmit: (DecisionRepository repository, String comment) =>
+                          repository.approve(
+                            decisionId,
+                            comment: comment.isEmpty ? null : comment,
+                          ),
                     ),
                     child: const Text('Approve'),
                   ),
@@ -310,9 +315,9 @@ class _ActionsCard extends ConsumerWidget {
                       actionLabel: 'Reject',
                       commentLabel: 'Justification (required)',
                       commentRequired: true,
-                      onSubmit: (String comment) => ref
-                          .read(decisionRepositoryProvider)
-                          .reject(decisionId, justification: comment),
+                      auditAction: 'reject',
+                      onSubmit: (DecisionRepository repository, String comment) =>
+                          repository.reject(decisionId, justification: comment),
                     ),
                     child: const Text('Reject'),
                   ),
@@ -324,9 +329,9 @@ class _ActionsCard extends ConsumerWidget {
                       actionLabel: 'Request revision',
                       commentLabel: 'What needs revising (required)',
                       commentRequired: true,
-                      onSubmit: (String comment) => ref
-                          .read(decisionRepositoryProvider)
-                          .requestRevision(decisionId, comment: comment),
+                      auditAction: 'requestRevision',
+                      onSubmit: (DecisionRepository repository, String comment) =>
+                          repository.requestRevision(decisionId, comment: comment),
                     ),
                     child: const Text('Request revision'),
                   ),
@@ -340,9 +345,8 @@ class _ActionsCard extends ConsumerWidget {
                     commentLabel: 'Comment (required)',
                     commentRequired: true,
                     requiresCriticalAcknowledgement: false,
-                    onSubmit: (String comment) => ref
-                        .read(decisionRepositoryProvider)
-                        .discuss(decisionId, comment: comment),
+                    onSubmit: (DecisionRepository repository, String comment) =>
+                        repository.discuss(decisionId, comment: comment),
                   ),
                   child: const Text('Discuss'),
                 ),
@@ -354,15 +358,32 @@ class _ActionsCard extends ConsumerWidget {
     );
   }
 
+  /// [auditAction] is the verb recorded on the audit trail (#46) — null for
+  /// Discuss, deliberately: appending a comment changes no state and its
+  /// content already lives in the decision's own discussion, so auditing it
+  /// would copy conversation text into a second store for no control gained.
   Future<void> _openResolutionDialog(
     BuildContext context,
     WidgetRef ref, {
     required String actionLabel,
     required String commentLabel,
     required bool commentRequired,
-    required Future<Decision> Function(String comment) onSubmit,
+    required Future<Decision> Function(
+      DecisionRepository repository,
+      String comment,
+    )
+    onSubmit,
     bool requiresCriticalAcknowledgement = true,
+    String? auditAction,
   }) async {
+    // Recorder and repository both captured before the dialog's await:
+    // `ref.read` on a consumer disposed while the dialog was up throws a
+    // `StateError` — which `on Exception` cannot catch — so a *confirmed*
+    // resolution would neither execute nor record any event (council
+    // 2026-08-26, the adversarial user, round 2; same shape fixed in
+    // `runSessionControlAction` and `mission_detail_screen._run`).
+    final AuditRecorder audit = ref.read(auditRecorderProvider);
+    final DecisionRepository repository = ref.read(decisionRepositoryProvider);
     final String? comment = await showDialog<String>(
       context: context,
       builder: (BuildContext dialogContext) => _ResolutionDialog(
@@ -374,13 +395,46 @@ class _ActionsCard extends ConsumerWidget {
       ),
     );
     if (comment == null) {
+      // Backed out at the confirmation step — recorded, not dropped
+      // (#46: "failed and cancelled operations are included").
+      if (auditAction != null) {
+        await audit.record(
+          area: AuditArea.decision,
+          action: auditAction,
+          target: decisionId,
+          result: AuditResult.cancelled,
+        );
+      }
       return;
     }
     try {
-      await onSubmit(comment);
+      await onSubmit(repository, comment);
+      if (auditAction != null) {
+        // The flag, never the comment: the trail records that a resolution
+        // carried a justification; the text itself is the decision's own
+        // audit history's job (`DecisionAuditEvent.comment`).
+        await audit.record(
+          area: AuditArea.decision,
+          action: auditAction,
+          target: decisionId,
+          result: AuditResult.success,
+          context: <String, String>{
+            'commentProvided': '${comment.isNotEmpty}',
+          },
+        );
+      }
       ref.invalidate(decisionDetailProvider(decisionId));
       ref.invalidate(decisionsProvider);
     } on Exception catch (error) {
+      if (auditAction != null) {
+        await audit.record(
+          area: AuditArea.decision,
+          action: auditAction,
+          target: decisionId,
+          result: AuditResult.failure,
+          failureReason: '$error',
+        );
+      }
       if (context.mounted) {
         ScaffoldMessenger.of(
           context,
