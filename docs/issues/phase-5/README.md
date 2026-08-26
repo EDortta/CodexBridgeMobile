@@ -36,7 +36,8 @@ scope) and is not part of this delivery.
 
 ## Issues
 
-- [#29 — Build Epics and Issues browser](https://github.com/EDortta/CodexBridgeMobile/issues/29) — size M, **finished, pending operator review/merge**. Branch `feature/gh-29/build-epics-and-issues-browser`. See `issues/29-build-epics-and-issues-browser.md`.
+- [#29 — Build Epics and Issues browser](https://github.com/EDortta/CodexBridgeMobile/issues/29) — size M, **merged and closed** (PR #51 browser UI, PR #59 HTTP repository). See `issues/29-build-epics-and-issues-browser.md`.
+- [#30 — Issue creation, editing and planning review](https://github.com/EDortta/CodexBridgeMobile/issues/30) — size L, **finished, PR #60 open, pending operator review/merge**. Branch `feature/gh-30/issue-creation-editing-and-planning-review`.
 
 ## External dependency: the backend API contract
 
