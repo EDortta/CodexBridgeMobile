@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/audit/audit_event.dart';
+import '../../../core/audit/audit_providers.dart';
 import '../../../core/design/app_tokens.dart';
 import '../../../core/design/operational_text_theme.dart';
 import '../../../core/format/relative_moment.dart';
@@ -391,6 +393,12 @@ class _ActionsCard extends ConsumerWidget {
     WidgetRef ref,
     MissionControlAction action,
   ) async {
+    final AuditRecorder audit = ref.read(auditRecorderProvider);
+    // Captured with the recorder, before the dialog's await: `ref.read` on
+    // a consumer disposed while the dialog was up would drop a *confirmed*
+    // cancel and its audit event with it (council 2026-08-26, the second
+    // caller, round 2 — same shape fixed in `runSessionControlAction`).
+    final MissionRepository repository = ref.read(missionRepositoryProvider);
     String? reason;
     if (action.requiresConfirmation) {
       reason = await showDialog<String>(
@@ -398,11 +406,19 @@ class _ActionsCard extends ConsumerWidget {
         builder: (BuildContext dialogContext) => _CancelDialog(mission: mission),
       );
       if (reason == null) {
+        // Backed out of the cancel dialog — recorded, not dropped (#46:
+        // "failed and cancelled operations are included"). Pause/resume
+        // have no confirmation step, so there is no back-out to record.
+        await audit.record(
+          area: AuditArea.mission,
+          action: action.name,
+          target: missionId,
+          result: AuditResult.cancelled,
+        );
         return;
       }
     }
     try {
-      final MissionRepository repository = ref.read(missionRepositoryProvider);
       switch (action) {
         case MissionControlAction.pause:
           await repository.pause(missionId);
@@ -411,9 +427,27 @@ class _ActionsCard extends ConsumerWidget {
         case MissionControlAction.cancel:
           await repository.cancel(missionId, reason: reason!);
       }
+      // The flag, never the text: the cancel reason itself lands on the
+      // mission's own timeline; the trail records that one was given.
+      await audit.record(
+        area: AuditArea.mission,
+        action: action.name,
+        target: missionId,
+        result: AuditResult.success,
+        context: <String, String>{
+          if (action == MissionControlAction.cancel) 'reasonProvided': 'true',
+        },
+      );
       ref.invalidate(missionDetailProvider(missionId));
       ref.invalidate(missionsProvider);
     } on Exception catch (error) {
+      await audit.record(
+        area: AuditArea.mission,
+        action: action.name,
+        target: missionId,
+        result: AuditResult.failure,
+        failureReason: '$error',
+      );
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$error')));
       }

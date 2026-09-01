@@ -1,3 +1,5 @@
+import 'package:codex_bridge_mobile/core/audit/audit_event.dart';
+import 'package:codex_bridge_mobile/core/audit/audit_providers.dart';
 import 'package:codex_bridge_mobile/core/design/app_theme.dart';
 import 'package:codex_bridge_mobile/core/format/relative_moment.dart';
 import 'package:codex_bridge_mobile/features/missions/data/mock_mission_repository.dart';
@@ -229,6 +231,165 @@ void main() {
 
     expect(find.text('Unable to load this mission.'), findsOneWidget);
   });
+
+  // #46: every mission control outcome — success, failure, backed out —
+  // lands on the cross-cutting audit trail.
+  group('audit trail', () {
+    Future<ProviderContainer> pumpAudited(
+      WidgetTester tester,
+      String missionId, {
+      MissionRepository? repository,
+    }) async {
+      tester.view.physicalSize = const Size(800, 2400);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(tester.view.reset);
+
+      final ProviderContainer container = ProviderContainer(
+        overrides: <Override>[
+          appClockProvider.overrideWithValue(() => pinnedNow),
+          auditActorProvider.overrideWithValue('op-42'),
+          missionRepositoryProvider.overrideWithValue(
+            repository ?? MockMissionRepository(clock: () => pinnedNow),
+          ),
+        ],
+      );
+      addTearDown(container.dispose);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: MaterialApp(
+            theme: AppTheme.light(),
+            home: MissionDetailScreen(missionId: missionId),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      return container;
+    }
+
+    testWidgets('pausing records success', (WidgetTester tester) async {
+      final ProviderContainer container = await pumpAudited(
+        tester,
+        'mobile-foundation',
+      );
+
+      await tester.tap(find.byKey(const Key('missionPauseButton')));
+      await tester.pumpAndSettle();
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.area, AuditArea.mission);
+      expect(event.action, 'pause');
+      expect(event.target, 'mobile-foundation');
+      expect(event.actor, 'op-42');
+      expect(event.result, AuditResult.success);
+    });
+
+    testWidgets('a confirmed cancel records success with the reason flag only', (
+      WidgetTester tester,
+    ) async {
+      final ProviderContainer container = await pumpAudited(
+        tester,
+        'desktop-shell-review',
+      );
+
+      await tester.tap(find.byKey(const Key('missionCancelButton')));
+      await tester.pumpAndSettle();
+      await tester.enterText(
+        find.byKey(const Key('missionCancelReasonField')),
+        'Design sign-off will not happen.',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('missionCancelSubmitButton')));
+      await tester.pumpAndSettle();
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.action, 'cancel');
+      expect(event.result, AuditResult.success);
+      // The reason's text lands on the mission's own timeline, never here.
+      expect(event.context, <String, String>{'reasonProvided': 'true'});
+    });
+
+    testWidgets('backing out of the cancel dialog records cancelled', (
+      WidgetTester tester,
+    ) async {
+      final ProviderContainer container = await pumpAudited(
+        tester,
+        'desktop-shell-review',
+      );
+
+      await tester.tap(find.byKey(const Key('missionCancelButton')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Keep mission'));
+      await tester.pumpAndSettle();
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.action, 'cancel');
+      expect(event.result, AuditResult.cancelled);
+    });
+
+    testWidgets('a repository failure records failure with the reason', (
+      WidgetTester tester,
+    ) async {
+      final ProviderContainer container = await pumpAudited(
+        tester,
+        'mobile-foundation',
+        repository: _PauseRefusedMissionRepository(
+          MockMissionRepository(clock: () => pinnedNow),
+        ),
+      );
+
+      await tester.tap(find.byKey(const Key('missionPauseButton')));
+      await tester.pumpAndSettle();
+
+      final List<AuditEvent> events = await container
+          .read(auditTrailRepositoryProvider)
+          .loadEvents();
+      final AuditEvent event = events.single;
+      expect(event.action, 'pause');
+      expect(event.result, AuditResult.failure);
+      expect(event.failureReason, contains('refused'));
+    });
+  });
+}
+
+/// Refuses `pause` the way a gateway would; everything else passes through
+/// to the wrapped repository, so the screen still loads its mission.
+class _PauseRefusedMissionRepository implements MissionRepository {
+  _PauseRefusedMissionRepository(this._inner);
+
+  final MissionRepository _inner;
+
+  @override
+  Future<List<Mission>> loadMissions() => _inner.loadMissions();
+
+  @override
+  Future<Mission> loadMission(String missionId) => _inner.loadMission(missionId);
+
+  @override
+  Future<Mission> pause(String missionId) async {
+    throw const MissionRepositoryException('The gateway refused the pause.');
+  }
+
+  @override
+  Future<Mission> resume(String missionId) => _inner.resume(missionId);
+
+  @override
+  Future<Mission> cancel(String missionId, {required String reason}) =>
+      _inner.cancel(missionId, reason: reason);
+
+  @override
+  Future<MissionExplanation> explain(String missionId) =>
+      _inner.explain(missionId);
 }
 
 /// Throws something other than [MissionNotFoundException] from every method,

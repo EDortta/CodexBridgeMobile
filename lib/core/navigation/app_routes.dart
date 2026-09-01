@@ -29,6 +29,13 @@ abstract final class AppRoutes {
   /// [server]: linking this device to an account is part of setting it up.
   static const String session = '$account/$sessionSegment';
 
+  /// Relative segment of the audit trail route.
+  static const String auditSegment = 'audit';
+
+  /// The audit trail (#46), nested inside Account like [server] and
+  /// [session]: what this device did is part of this device's account view.
+  static const String audit = '$account/$auditSegment';
+
   /// Absolute path of a destination's detail route.
   static String detailOf(String destinationPath) =>
       '$destinationPath/$detailSegment';

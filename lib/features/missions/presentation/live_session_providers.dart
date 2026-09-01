@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/audit/audit_event.dart';
+import '../../../core/audit/audit_providers.dart';
 import '../../../core/gateway/gateway_context.dart';
 import '../../../core/gateway/gateway_context_provider.dart';
 import '../data/http_live_session_repository.dart';
@@ -130,6 +132,7 @@ class RemoteSessionsController extends AsyncNotifier<RemoteSessionsState> {
     String sessionId,
     LiveSessionControlAction action,
   ) async {
+    final AuditRecorder audit = ref.read(auditRecorderProvider);
     final RemoteSessionsState current =
         state.valueOrNull ?? const RemoteSessionsState();
     if (current.pending.contains(sessionId)) {
@@ -144,6 +147,10 @@ class RemoteSessionsController extends AsyncNotifier<RemoteSessionsState> {
       // (council 2026-08-18, "the adversarial user", reproduced live).
       // Setting `pending` synchronously, first, below, is the actual fix;
       // this check is the backstop for whatever still slips past it.
+      //
+      // Not an audit event (#46): nothing was attempted or cancelled here —
+      // the suppressed tap is a duplicate of an operation already in flight,
+      // and that first operation records its own outcome below.
       return;
     }
     state = AsyncData<RemoteSessionsState>(
@@ -161,20 +168,45 @@ class RemoteSessionsController extends AsyncNotifier<RemoteSessionsState> {
           information: 'Select a server and sign in to control live sessions.',
         ),
       );
+      // A precondition stopped the action before it could be sent — a
+      // failure the trail keeps, like any other (#46). Recorded after the
+      // state write, like every record in this method: the audit write must
+      // never sit inside the window where `pending` disables the button —
+      // free with the in-memory store, a network round trip once an HTTP
+      // audit backend exists (council 2026-08-26, the second caller, r1).
+      await audit.record(
+        area: AuditArea.liveSession,
+        action: action.name,
+        target: sessionId,
+        result: AuditResult.failure,
+        failureReason: 'No server selected or no signed-in session.',
+      );
       return;
     }
     final LiveSessionRepository repository = ref.read(liveSessionRepositoryProvider);
     final int revision;
     try {
       revision = await _revisionFor(repository, context, current, sessionId);
-    } on LiveSessionRepositoryException catch (error) {
+    } on Exception catch (error) {
+      // `on Exception`, not only the repository's own type: a malformed 200
+      // payload surfaces as `FormatException` from `LiveSession.fromJson`,
+      // and letting it escape here would leave `pending` stuck and the
+      // failure unrecorded (council 2026-08-26, the adversarial user, r1).
+      final String message = _controlFailureMessage(error);
       state = AsyncData<RemoteSessionsState>(
         RemoteSessionsState(
           sessions: current.sessions,
           information: current.information,
-          error: error.message,
+          error: message,
           pending: current.pending,
         ),
+      );
+      await audit.record(
+        area: AuditArea.liveSession,
+        action: action.name,
+        target: sessionId,
+        result: AuditResult.failure,
+        failureReason: message,
       );
       return;
     }
@@ -196,18 +228,47 @@ class RemoteSessionsController extends AsyncNotifier<RemoteSessionsState> {
           pending: current.pending.where((String id) => id != sessionId).toSet(),
         ),
       );
-    } on LiveSessionRepositoryException catch (error) {
+      // After the state write — see the precondition branch above for why.
+      await audit.record(
+        area: AuditArea.liveSession,
+        action: action.name,
+        target: sessionId,
+        result: AuditResult.success,
+      );
+    } on Exception catch (error) {
+      // `on Exception` for the same reason `_revisionFor`'s catch is: a
+      // malformed success payload must still clear `pending` and still be
+      // a recorded failure (council 2026-08-26, the adversarial user, r1).
+      final String message = _controlFailureMessage(error);
       state = AsyncData<RemoteSessionsState>(
         RemoteSessionsState(
           sessions: current.sessions,
           information: current.information,
-          error: error.message,
+          error: message,
           pending: current.pending.where((String id) => id != sessionId).toSet(),
         ),
+      );
+      await audit.record(
+        area: AuditArea.liveSession,
+        action: action.name,
+        target: sessionId,
+        result: AuditResult.failure,
+        failureReason: message,
       );
     }
   }
 }
+
+/// The operator-facing message for a failed control action.
+///
+/// [LiveSessionRepositoryException] already carries one; anything else is a
+/// code-level failure (a malformed payload, most likely) whose `toString`
+/// is the honest thing to show and record rather than a fabricated
+/// explanation.
+String _controlFailureMessage(Exception error) => switch (error) {
+  LiveSessionRepositoryException(:final String message) => message,
+  _ => '$error',
+};
 
 /// The revision to send with a control action's `If-Match`.
 ///
@@ -253,6 +314,18 @@ Future<void> runSessionControlAction(
   String sessionId,
   LiveSessionControlAction action,
 ) async {
+  // Both captured before the dialog's await: the calling widget can be
+  // disposed while the dialog is up (a redirect, a programmatic pop), and
+  // `ref.read` on a disposed consumer throws — losing the cancelled event
+  // (council 2026-08-26, the second caller, round 1) or, one line further
+  // down, silently dropping a *confirmed* destructive action and its audit
+  // event with it (same lens, round 2). The captured objects stay valid:
+  // both come from non-autoDispose providers whose own `Ref` outlives any
+  // widget.
+  final AuditRecorder audit = ref.read(auditRecorderProvider);
+  final RemoteSessionsController controller = ref.read(
+    remoteSessionsProvider.notifier,
+  );
   if (action.isDestructive) {
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -272,8 +345,18 @@ Future<void> runSessionControlAction(
       ),
     );
     if (confirmed != true) {
+      // The operator backed out of a destructive action at its confirmation
+      // — recorded, not dropped (#46: "failed and cancelled operations are
+      // included"). Pause/resume never reach here: with no confirmation
+      // step there is no cancel to record.
+      await audit.record(
+        area: AuditArea.liveSession,
+        action: action.name,
+        target: sessionId,
+        result: AuditResult.cancelled,
+      );
       return;
     }
   }
-  await ref.read(remoteSessionsProvider.notifier).control(sessionId, action);
+  await controller.control(sessionId, action);
 }

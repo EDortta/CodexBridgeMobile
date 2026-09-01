@@ -55,4 +55,8 @@ abstract final class AppIcons {
   /// Paired with relative-time text (`RelativeMoment`) wherever data is
   /// marked stale — never color alone.
   static const IconData stale = Icons.schedule_outlined;
+
+  /// The audit trail (#46) — the Account tile that opens it, and the
+  /// installation area (#37/#38) inside it once that flow exists.
+  static const IconData audit = Icons.receipt_long_outlined;
 }

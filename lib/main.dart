@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'app/app.dart';
 import 'app/app_router.dart';
+import 'app/audit_actor_binding.dart';
 import 'app/auth_gateway_binding.dart';
 import 'app/conversation_repository_binding.dart';
 import 'app/decision_repository_binding.dart';
@@ -19,6 +20,7 @@ import 'app/project_repository_binding.dart';
 void main() => runApp(
   ProviderScope(
     overrides: <Override>[
+      auditActorBinding,
       authGatewayBinding,
       gatewayContextBinding,
       issueRepositoryBinding,

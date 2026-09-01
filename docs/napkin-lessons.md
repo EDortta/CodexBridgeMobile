@@ -921,3 +921,42 @@ Questions carried forward:
   can produce and cross-check against the OpenAPI response list — the two
   can and did disagree in ways that change which exception type a client
   needs, not just which number a test asserts on.
+
+## 2026-08-26 — WK-20260826-gh-46-audit-trail-for-sensitive-operations
+
+Council, 2 rounds (second caller / adversarial user / security), on the #46
+first slice. Four counts: **8 raised (5 r1 + 3 r2) / 8 survived §2, all
+fixed / 4 became tests / 8 questions open**. r2 classification: 0
+introduzido-pela-r1, 1 pré-existente, 2 aberto-da-r1.
+
+- A fix can stop one line short of its own comment. r1 caught `ref.read`
+  after a dialog await losing the *cancelled* audit event; the fix captured
+  the recorder and left the notifier — so the *confirmed* destructive
+  action still vanished on a disposed widget, and `StateError` (an `Error`)
+  sails through `on Exception`. r2's second caller and adversarial user
+  found the two halves independently. Rule: when capturing before an await
+  because "ref dies", capture **everything** the post-await code reads —
+  now done in `runSessionControlAction`, `mission_detail_screen._run` and
+  `decision_detail_screen._openResolutionDialog` (repository handed into
+  `onSubmit` instead of read inside it).
+- A corrected catch is only half-corrected until each catch site has a test
+  that throws the *new* exception type through it. The `on Exception`
+  broadening had one test (controlSession path); the `_revisionFor` path
+  was code-true but test-unpinned — a regression re-narrowing it would have
+  passed 552/552. Pinned with `_MalformedDetailRepository`.
+- Value-shape redaction must be derived from the token formats the codebase
+  *actually produces*, not from generic shapes: the mock session tokens
+  (`local-access-<iso8601>`) carry colons that fall outside a base64url JWT
+  class. And the module doc must promise only what the patterns deliver —
+  the honest contract is "key-based redaction + minimal call-site context
+  are the guarantees; value patterns are defense in depth".
+- Questions left open (8, deduped): audit-before-act once a real backend
+  can refuse a write; `Error` never becomes a failure event (accepted —
+  needs a code defect); "session controls" scope read as live sessions,
+  auth lifecycle deferred (operator to confirm); trail readable after
+  sign-out in-process (R11 wipe scope); camelCase query-param variant
+  unmatched (app produces none); raw `'$error'` reaches UI snackbars
+  unredacted (pre-existing pattern, store side IS redacted); no router test
+  reaches `/account/audit` (matches repo norm for `/account/session`);
+  in-memory trail is unbounded within a session (cap/pagination is the
+  HTTP implementation's contract to set).
