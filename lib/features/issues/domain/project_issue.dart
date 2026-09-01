@@ -1,3 +1,4 @@
+import 'issue_history_event.dart';
 import 'issue_status.dart';
 
 /// How urgently a [ProjectIssue] needs attention.
@@ -42,6 +43,7 @@ class ProjectIssue {
     this.labels = const <String>[],
     this.dependencies = const <String>[],
     this.revision = 1,
+    this.history = const <IssueHistoryEvent>[],
   });
 
   final String id;
@@ -84,6 +86,18 @@ class ProjectIssue {
   /// carry; a real load always overwrites this with the value the gateway
   /// sent. Callers of a future update path send it back as `If-Match`.
   final int revision;
+
+  /// Every recorded change, oldest first — #30's "changes preserve history"
+  /// acceptance criterion, the same append-only shape
+  /// `Mission.timeline`/`Decision.auditTrail` use for their own entities.
+  /// Built by [describeIssueChanges] (`issue_change_summary.dart`) and
+  /// appended by the repository that applies the write —
+  /// `MockIssueRepository` keeps it in memory across a session;
+  /// `HttpIssueRepository` carries forward only what the gateway itself
+  /// sends back (`history` is not yet part of CodexBridge issue #8's wire
+  /// contract, so a real issue's history starts empty here until the
+  /// gateway grows one — `not validated: server-persisted issue history`).
+  final List<IssueHistoryEvent> history;
 
   /// An issue the operator needs to act on — #29's "blocked indicators".
   /// Card and detail rendering pair this with an icon and the

@@ -165,6 +165,13 @@ void main() {
     expect(find.text('No issues for this project.'), findsOneWidget);
     expect(find.text('No issues match your filters.'), findsNothing);
   });
+
+  // #30.
+  testWidgets('offers a New issue action', (WidgetTester tester) async {
+    await pumpScreen(tester);
+
+    expect(find.byKey(const Key('newIssueButton')), findsOneWidget);
+  });
 }
 
 class _FakeIssueRepository implements IssueRepository {
@@ -190,4 +197,49 @@ class _FakeIssueRepository implements IssueRepository {
 
   @override
   Future<Epic> loadEpic(String epicId) => throw EpicNotFoundException(epicId);
+
+  @override
+  Future<Epic> createEpic({
+    required String projectId,
+    required String title,
+    String? description,
+    IssueStatus? status,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProjectIssue> createIssue({
+    required String projectId,
+    required String title,
+    String? epicId,
+    String? description,
+    IssueStatus? status,
+    IssuePriority? priority,
+    List<String>? labels,
+    String? assigneeUserId,
+    String? assigneeEmail,
+    List<String>? dependencies,
+    String? blockedReason,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProjectIssue> updateIssue({
+    required String issueId,
+    required int revision,
+    String? title,
+    String? description,
+    IssueStatus? status,
+    IssuePriority? priority,
+    List<String>? labels,
+    String? assigneeUserId,
+    String? assigneeEmail,
+    List<String>? dependencies,
+    String? blockedReason,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProjectIssue> linkIssueToEpic({
+    required String epicId,
+    required String issueId,
+    required int issueRevision,
+  }) => throw UnimplementedError();
 }

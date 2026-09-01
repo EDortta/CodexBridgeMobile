@@ -4,6 +4,7 @@ import 'dart:io';
 
 import '../../../core/gateway/gateway_context.dart';
 import '../domain/epic.dart';
+import '../domain/issue_history_event.dart';
 import '../domain/issue_repository.dart';
 import '../domain/issue_status.dart';
 import '../domain/project_issue.dart';
@@ -38,8 +39,19 @@ import '../domain/project_issue.dart';
 /// each mapping's own doc comment for the specific collisions this makes
 /// (`in_review` folds into "In progress", `cancelled` folds into "Done").
 /// [_issueStatusToWire] and friends invert the same table for the write
-/// methods below, which are not yet part of [IssueRepository] — see their
-/// own doc comment for why.
+/// methods below, part of [IssueRepository] since #30.
+///
+/// **`ProjectIssue.history` is not part of CodexBridge issue #8's wire
+/// contract.** The gateway has no audit/history endpoint for issues today,
+/// so [_issueFromJson] only carries forward a `history` array when the
+/// server actually sends one (additive — an old server that never heard of
+/// the field still round-trips fine) and otherwise leaves it empty; unlike
+/// `MockIssueRepository`, this class never synthesizes history events
+/// client-side, because it has no reliable "before" state to diff against
+/// a `PATCH` response taken alone. `not validated: server-persisted issue
+/// history` — #30's "changes preserve history" is fully exercised against
+/// `MockIssueRepository` (the debug-build default) and stays an honest gap
+/// against the real gateway until #8 grows one.
 ///
 /// Structured like [HttpAuthGateway] (bounded timeouts, a plain `dart:io`
 /// [HttpClient] per call, certificate verification never disabled) and like
@@ -156,12 +168,10 @@ class HttpIssueRepository implements IssueRepository {
     throw EpicNotFoundException(epicId);
   }
 
-  /// Creates an epic. Not part of [IssueRepository]: #29's browser is
-  /// read-only and nothing in this app calls this yet — landed alongside the
-  /// rest of this class because the gateway side is ready (issue #8) and
-  /// #30 ("Issue creation, editing and planning review") will need it. The
-  /// same shape [HttpAuthGateway.revoke] uses: real, tested, and named here
-  /// rather than left to be rediscovered.
+  /// Creates an epic — #30's "associating [issues] with Epics" needs one to
+  /// exist first. Landed on this class ahead of #30 itself because the
+  /// gateway side was ready (issue #8); now part of [IssueRepository].
+  @override
   Future<Epic> createEpic({
     required String projectId,
     required String title,
@@ -186,7 +196,9 @@ class HttpIssueRepository implements IssueRepository {
     );
   }
 
-  /// Creates an issue. Not part of [IssueRepository] — see [createEpic].
+  /// Creates an issue — #30. Part of [IssueRepository] since #30 wired the
+  /// write path into `IssueFormScreen` (`presentation/issue_form_screen.dart`).
+  @override
   Future<ProjectIssue> createIssue({
     required String projectId,
     required String title,
@@ -225,10 +237,11 @@ class HttpIssueRepository implements IssueRepository {
   /// Changes fields on an existing issue, guarded by [revision] — the value
   /// last read from [ProjectIssue.revision] — sent as `If-Match`. Throws
   /// [StaleIssueRevisionException] when the gateway answers `412` because the
-  /// issue changed since that read. Not part of [IssueRepository] — see
-  /// [createEpic]. `epicId` is deliberately not a parameter here: the
-  /// gateway keeps exactly one path that moves an issue between epics
+  /// issue changed since that read — #30. `epicId` is deliberately not a
+  /// parameter here: the gateway keeps exactly one path that moves an issue
+  /// between epics
   /// ([linkIssueToEpic]), not two that could disagree.
+  @override
   Future<ProjectIssue> updateIssue({
     required String issueId,
     required int revision,
@@ -274,8 +287,8 @@ class HttpIssueRepository implements IssueRepository {
   /// Attaches [issueId] to [epicId], guarded by [issueRevision] — the
   /// gateway validates `If-Match` against the *issue's* revision, not the
   /// epic's (`epics.py`'s `link_issue`), and answers with the updated issue,
-  /// not the epic. Throws [StaleIssueRevisionException] on `412`. Not part
-  /// of [IssueRepository] — see [createEpic].
+  /// not the epic. Throws [StaleIssueRevisionException] on `412` — #30.
+  @override
   Future<ProjectIssue> linkIssueToEpic({
     required String epicId,
     required String issueId,
@@ -493,6 +506,7 @@ class HttpIssueRepository implements IssueRepository {
       blockedReason: _string(json['blockedReason']),
       labels: _stringList(json['labels']),
       dependencies: _stringList(json['dependencies']),
+      history: _historyList(json['history'], issueId: id),
       revision: revision,
     );
   }
@@ -537,6 +551,37 @@ class HttpIssueRepository implements IssueRepository {
 
   static List<String> _stringList(Object? value) =>
       value is List<Object?> ? value.whereType<String>().toList(growable: false) : const <String>[];
+
+  /// See this class's own doc comment: the gateway does not send `history`
+  /// today, so an absent or malformed entry is dropped rather than treated
+  /// as a parse failure — an issue this app can otherwise read must not
+  /// become unreadable because of a field the server never promised.
+  static List<IssueHistoryEvent> _historyList(Object? value, {required String issueId}) {
+    if (value is! List<Object?>) {
+      return const <IssueHistoryEvent>[];
+    }
+    final List<IssueHistoryEvent> events = <IssueHistoryEvent>[];
+    for (int i = 0; i < value.length; i++) {
+      final Object? row = value[i];
+      if (row is! Map<String, Object?>) {
+        continue;
+      }
+      final String? description = _string(row['description']);
+      final DateTime? occurredAt = _instant(row['occurredAt']);
+      if (description == null || occurredAt == null) {
+        continue;
+      }
+      events.add(
+        IssueHistoryEvent(
+          id: _string(row['id']) ?? '$issueId-history-${i + 1}',
+          description: description,
+          actor: _string(row['actor']) ?? 'Unknown',
+          occurredAt: occurredAt,
+        ),
+      );
+    }
+    return events;
+  }
 
   /// `issue_types.py`'s `ISSUE_STATUSES` (open, in_progress, blocked,
   /// in_review, done, cancelled) folded into #29's four-value
